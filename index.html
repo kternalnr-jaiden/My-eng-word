@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Voca App</title>
+    <script src="https://www.gstatic.com/firebasejs/11.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.0/firebase-database-compat.js"></script>
+    <style>
+        :root { --main: #6c5ce7; --bg: #f0f2f5; --card: #ffffff; --text: #2d3436; --accent: #00b894; --warn: #d63031; }
+        body { font-family: 'Pretendard', -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 550px; background: var(--card); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        
+        #authOverlay { position: fixed; inset: 0; background: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; }
+        .input-style { padding: 12px 15px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; transition: 0.3s; width: 100%; box-sizing: border-box; }
+        .input-style:focus { border-color: var(--main); outline: none; }
+        
+        .btn { padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; transition: 0.2s; font-size: 14px; }
+        .btn-main { background: var(--main); color: white; }
+        .btn-naver { background: #03cf5d; color: white; }
+        .btn-del { background: #ffeaa7; color: #d63031; padding: 5px 10px; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .search-area { display: flex; gap: 8px; margin-bottom: 20px; }
+        
+        #searchResult { background: #f9f9ff; padding: 20px; border-radius: 15px; margin-bottom: 20px; display: none; border: 1px solid #e0e0ff; }
+        .dict-links { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
+        .link-tag { font-size: 12px; padding: 4px 8px; background: #eee; border-radius: 5px; text-decoration: none; color: #666; }
+        .link-tag:hover { background: var(--main); color: white; }
+
+        .word-item { background: white; padding: 15px; border-radius: 15px; margin-bottom: 12px; border: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .word-text b { font-size: 18px; color: var(--main); }
+        
+        #quizArea { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:30px; border-radius:20px; width:85%; max-width:400px; z-index:500; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+        .quiz-opt { width:100%; margin:8px 0; text-align:left; background: #f8f9fa; border: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+<div id="authOverlay">
+    <h2 style="margin-bottom:20px;">🔒 Access Control</h2>
+    <input type="password" id="pwInput" class="input-style" style="width:200px; text-align:center" placeholder="비밀번호">
+    <button id="loginBtn" class="btn btn-main" style="margin-top:15px; width:200px;">접속하기</button>
+</div>
+
+<div class="container" id="mainApp" style="display:none;">
+    <h2 style="text-align:center; color: var(--main);">My Cloud Dictionary</h2>
+    
+    <div class="search-area">
+        <input type="text" id="wordInput" class="input-style" placeholder="검색할 단어 (English)">
+        <button id="searchBtn" class="btn btn-main">Search</button>
+    </div>
+
+    <div id="searchResult">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 id="resWord" style="margin:0; color:var(--main)"></h3>
+            <span id="resPhonetic" style="color:#aaa"></span>
+        </div>
+        
+        <div class="dict-links" id="externalLinks"></div>
+        
+        <p style="font-size:13px; margin-bottom:5px; color:#666;">[영영 정의]</p>
+        <textarea id="resMeaning" class="input-style" rows="3" style="font-size:14px; margin-bottom:10px; resize:none;"></textarea>
+        
+        <div style="display:flex; gap:5px;">
+            <input type="text" id="resKorean" class="input-style" placeholder="한글 뜻 또는 메모">
+            <button id="naverBtn" class="btn btn-naver">네이버</button>
+        </div>
+        <button id="saveBtn" class="btn btn-main" style="width:100%; margin-top:10px;">이 내용으로 저장하기</button>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <select id="sortOrder" style="border:none; background:transparent; font-weight:bold; cursor:pointer;">
+            <option value="date">최신순</option>
+            <option value="abc">알파벳순</option>
+        </select>
+        <button id="startQuizBtn" class="btn" style="background:var(--accent); color:white;">Quiz</button>
+    </div>
+
+    <div id="wordList"></div>
+</div>
+
+<div id="quizArea">
+    <h2 id="quizWord" style="text-align:center; color:var(--main)"></h2>
+    <div id="quizOptions"></div>
+    <button id="closeQuizBtn" class="btn" style="width:100%; margin-top:15px;">그만하기</button>
+</div>
+
+<script>
+    // Firebase Config (제공해주신 데이터 적용)
+    const firebaseConfig = {
+        apiKey: "AIzaSyCTVfsVWULs99Tgind1z_wqbjCJPI63Esg",
+        authDomain: "my-eng-word.firebaseapp.com",
+        databaseURL: "https://my-eng-word-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "my-eng-word",
+        storageBucket: "my-eng-word.firebasestorage.app",
+        messagingSenderId: "216506701187",
+        appId: "1:216506701187:web:b814513e64777b35fc12b6"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let vocabulary = [];
+    let currentSearch = null;
+
+    // 인증
+    document.getElementById('loginBtn').onclick = () => {
+        if(document.getElementById('pwInput').value === "3346") {
+            document.getElementById('authOverlay').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            loadData();
+        } else alert("비밀번호가 다릅니다.");
+    };
+
+    // 외부 사전 링크 생성
+    function updateLinks(word) {
+        const links = [
+            { name: 'Cambridge', url: `https://dictionary.cambridge.org/dictionary/english/${word}` },
+            { name: 'Oxford', url: `https://www.oxfordlearnersdictionaries.com/definition/english/${word}` },
+            { name: 'Merriam-Webster', url: `https://www.merriam-webster.com/dictionary/${word}` },
+            { name: 'Collins', url: `https://www.collinsdictionary.com/dictionary/english/${word}` }
+        ];
+        const container = document.getElementById('externalLinks');
+        container.innerHTML = links.map(l => `<a href="${l.url}" target="_blank" class="link-tag">↗ ${l.name}</a>`).join('');
+    }
+
+    // 데이터 로드
+    function loadData() {
+        db.ref('words/').on('value', (snap) => {
+            const val = snap.val();
+            vocabulary = val ? Object.keys(val).map(k => ({id:k, ...val[k]})) : [];
+            renderList();
+        });
+    }
+
+    // 검색
+    document.getElementById('searchBtn').onclick = async () => {
+        const word = document.getElementById('wordInput').value.trim();
+        if(!word) return;
+        
+        updateLinks(word);
+        document.getElementById('resWord').innerText = word;
+        document.getElementById('searchResult').style.display = 'block';
+        document.getElementById('resMeaning').value = "검색 중...";
+        document.getElementById('resPhonetic').innerText = "";
+
+        try {
+            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+            const data = await res.json();
+            if(!data.title) {
+                const entry = data[0];
+                document.getElementById('resPhonetic').innerText = entry.phonetic || "";
+                document.getElementById('resMeaning').value = entry.meanings[0].definitions[0].definition;
+            } else {
+                document.getElementById('resMeaning').value = "기본 사전에 뜻이 없습니다. 위 링크에서 찾아 직접 입력해주세요.";
+            }
+        } catch(e) {
+            document.getElementById('resMeaning').value = "연결 오류. 수동 입력을 권장합니다.";
+        }
+    };
+
+    document.getElementById('naverBtn').onclick = () => {
+        window.open(`https://en.dict.naver.com/#/search?query=${document.getElementById('resWord').innerText}`, 'naver', 'width=500,height=700');
+    };
+
+    // 저장 (수정된 텍스트 반영)
+    document.getElementById('saveBtn').onclick = () => {
+        const word = document.getElementById('resWord').innerText;
+        const meaning = document.getElementById('resMeaning').value;
+        const korean = document.getElementById('resKorean').value;
+        const phonetic = document.getElementById('resPhonetic').innerText;
+
+        db.ref('words/').push({ word, meaning, korean, phonetic, timestamp: Date.now() });
+        
+        document.getElementById('searchResult').style.display = 'none';
+        document.getElementById('wordInput').value = '';
+        document.getElementById('resKorean').value = '';
+    };
+
+    function renderList() {
+        const list = document.getElementById('wordList');
+        const sort = document.getElementById('sortOrder').value;
+        list.innerHTML = '';
+        let sorted = [...vocabulary];
+        if(sort === 'abc') sorted.sort((a,b) => a.word.localeCompare(b.word));
+        else sorted.sort((a,b) => b.timestamp - a.timestamp);
+
+        sorted.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'word-item';
+            div.innerHTML = `
+                <div class="word-text">
+                    <b>${item.word}</b> <small style="color:#aaa">${item.phonetic}</small><br>
+                    <div style="font-size:13px; margin-top:4px;">${item.korean ? '<span style="color:var(--main)">['+item.korean+']</span> ' : ''}${item.meaning}</div>
+                </div>
+                <button class="btn btn-del" onclick="deleteWord('${item.id}')">삭제</button>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    window.deleteWord = (id) => { if(confirm("삭제할까요?")) db.ref('words/'+id).remove(); };
+    document.getElementById('sortOrder').onchange = renderList;
+
+    // 퀴즈 및 기타 로직 생략 (기존 로직과 동일하게 유지하거나 필요시 추가)
+    document.getElementById('startQuizBtn').onclick = () => {
+        if(vocabulary.length < 3) return alert("단어가 부족합니다.");
+        document.getElementById('quizArea').style.display = 'block';
+        nextQuiz();
+    };
+
+    function nextQuiz() {
+        const target = vocabulary[Math.floor(Math.random()*vocabulary.length)];
+        document.getElementById('quizWord').innerText = target.word;
+        let opts = [target];
+        while(opts.length < 3) {
+            let r = vocabulary[Math.floor(Math.random()*vocabulary.length)];
+            if(!opts.find(o=>o.id===r.id)) opts.push(r);
+        }
+        opts.sort(()=>Math.random()-0.5);
+        const cont = document.getElementById('quizOptions');
+        cont.innerHTML = '';
+        opts.forEach(o => {
+            const b = document.createElement('button');
+            b.className = 'btn quiz-opt';
+            b.innerText = o.korean || o.meaning;
+            b.onclick = () => {
+                if(o.id === target.id) { alert("정답!"); nextQuiz(); }
+                else alert("오답! 정답은: " + target.word);
+            };
+            cont.appendChild(b);
+        });
+    }
+    document.getElementById('closeQuizBtn').onclick = () => document.getElementById('quizArea').style.display='none';
+</script>
+</body>
+</html>
