@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Voca App</title>
+    <style>
+        :root { --primary: #4a90e2; --secondary: #f5f7fa; --accent: #e74c3c; }
+        body { font-family: sans-serif; background: var(--secondary); margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        #authOverlay { position: fixed; top:0; left:0; width:100%; height:100%; background:white; display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:1000; }
+        .search-box { display: flex; gap: 8px; margin-bottom: 20px; }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 6px; }
+        button { padding: 10px 15px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        #searchResult { background: #fffbe6; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none; border-left: 5px solid #f1c40f; }
+        .word-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; }
+        #quizArea { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:30px; border:2px solid var(--primary); border-radius:15px; width:90%; max-width:400px; z-index:500; box-shadow: 0 0 20px rgba(0,0,0,0.2); }
+        .quiz-option { display:block; width:100%; margin:10px 0; padding:10px; background:white; border:1px solid #ddd; border-radius:5px; text-align:left; cursor:pointer; }
+        .quiz-option:hover { background: #eef7ff; }
+    </style>
+</head>
+<body>
+
+<div id="authOverlay">
+    <h2>Voca App 접속</h2>
+    <input type="password" id="pwInput" placeholder="비밀번호 입력">
+    <button id="loginBtn" style="margin-top:10px;">접속하기</button>
+</div>
+
+<div class="container" id="mainApp" style="display:none;">
+    <h1>나의 클라우드 단어장</h1>
+    <div class="search-box">
+        <input type="text" id="wordInput" style="flex:1" placeholder="단어 검색 (English)">
+        <button id="searchBtn">검색</button>
+    </div>
+    <div id="searchResult">
+        <h3 id="resWord" style="margin:0"></h3>
+        <p id="resPhonetic" style="color:#666"></p>
+        <p id="resMeaning"></p>
+        <div style="display:flex; gap:5px;">
+            <input type="text" id="resKorean" placeholder="한글 뜻 입력" style="flex:1">
+            <button id="naverBtn" style="background:#03cf5d">네이버</button>
+        </div>
+        <button id="saveBtn" style="width:100%; margin-top:10px;">저장하기</button>
+    </div>
+    <div style="display:flex; justify-content:space-between; margin: 20px 0 10px;">
+        <select id="sortOrder">
+            <option value="date">날짜순</option>
+            <option value="abc">ABC순</option>
+        </select>
+        <button id="startQuizBtn" style="background:#27ae60">랜덤 퀴즈</button>
+    </div>
+    <div id="wordList"></div>
+    <div id="wrongNote" style="display:none; margin-top:30px; border-top:2px solid #eee; padding-top:20px;">
+        <h3 style="color:var(--accent)">오늘 틀린 단어</h3>
+        <ul id="wrongList"></ul>
+    </div>
+</div>
+
+<div id="quizArea">
+    <h2 id="quizWord" style="text-align:center"></h2>
+    <div id="quizOptions"></div>
+    <button id="closeQuizBtn" style="width:100%; background:#95a5a6; margin-top:10px;">닫기</button>
+</div>
+
+<script type="module">
+    // Firebase SDK 모듈 가져오기
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+    import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+    // 사용자님이 제공해주신 설정값
+    const firebaseConfig = {
+        apiKey: "AIzaSyCTVfsVWULs99Tgind1z_wqbjCJPI63Esg",
+        authDomain: "my-eng-word.firebaseapp.com",
+        databaseURL: "https://my-eng-word-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "my-eng-word",
+        storageBucket: "my-eng-word.firebasestorage.app",
+        messagingSenderId: "216506701187",
+        appId: "1:216506701187:web:b814513e64777b35fc12b6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    
+    let vocabulary = [];
+    let wrongAnswers = new Set();
+    let currentSearch = null;
+
+    // 접속 확인
+    document.getElementById('loginBtn').onclick = () => {
+        if(document.getElementById('pwInput').value === "3346") {
+            document.getElementById('authOverlay').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            loadData();
+        } else { alert("비밀번호가 틀렸습니다."); }
+    };
+
+    // 데이터 로드
+    function loadData() {
+        const wordsRef = ref(db, 'words/');
+        onValue(wordsRef, (snapshot) => {
+            const data = snapshot.val();
+            vocabulary = data ? Object.keys(data).map(key => ({id: key, ...data[key]})) : [];
+            renderList();
+        });
+    }
+
+    // 단어 검색
+    document.getElementById('searchBtn').onclick = async () => {
+        const word = document.getElementById('wordInput').value.trim();
+        if(!word) return;
+        try {
+            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+            const data = await res.json();
+            if(data.title) throw new Error("단어를 찾을 수 없습니다.");
+            
+            const entry = data[0];
+            currentSearch = {
+                word: entry.word,
+                phonetic: entry.phonetic || (entry.phonetics[0] ? entry.phonetics[0].text : ""),
+                meaning: entry.meanings[0].definitions[0].definition,
+                timestamp: Date.now()
+            };
+            
+            document.getElementById('resWord').innerText = currentSearch.word;
+            document.getElementById('resPhonetic').innerText = currentSearch.phonetic;
+            document.getElementById('resMeaning').innerText = currentSearch.meaning;
+            document.getElementById('searchResult').style.display = 'block';
+        } catch(e) { alert(e.message); }
+    };
+
+    document.getElementById('naverBtn').onclick = () => {
+        const word = document.getElementById('resWord').innerText;
+        window.open(`https://en.dict.naver.com/#/search?query=${word}`, 'naver', 'width=500,height=600');
+    };
+
+    document.getElementById('saveBtn').onclick = () => {
+        if(!currentSearch) return;
+        const kor = document.getElementById('resKorean').value;
+        const finalWord = {...currentSearch, korean: kor};
+        push(ref(db, 'words/'), finalWord);
+        document.getElementById('searchResult').style.display = 'none';
+        document.getElementById('wordInput').value = '';
+        document.getElementById('resKorean').value = '';
+    };
+
+    function renderList() {
+        const listEl = document.getElementById('wordList');
+        const sort = document.getElementById('sortOrder').value;
+        listEl.innerHTML = '';
+        let sorted = [...vocabulary];
+        if(sort === 'abc') sorted.sort((a,b) => a.word.localeCompare(b.word));
+        else sorted.sort((a,b) => b.timestamp - a.timestamp);
+
+        sorted.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'word-item';
+            div.innerHTML = `
+                <div>
+                    <strong>${item.word}</strong> <span style="color:#888; font-size:0.8em">${item.phonetic}</span><br>
+                    <small>${item.korean ? '['+item.korean+'] ' : ''}${item.meaning}</small>
+                </div>
+                <button class="del-btn" data-id="${item.id}" style="background:var(--accent); font-size:11px">삭제</button>
+            `;
+            div.querySelector('.del-btn').onclick = () => {
+                if(confirm("삭제하시겠습니까?")) remove(ref(db, `words/${item.id}`));
+            };
+            listEl.appendChild(div);
+        });
+    }
+
+    document.getElementById('sortOrder').onchange = renderList;
+
+    // 퀴즈
+    document.getElementById('startQuizBtn').onclick = () => {
+        if(vocabulary.length < 3) return alert("단어를 3개 이상 등록해주세요.");
+        document.getElementById('quizArea').style.display = 'block';
+        showNextQuiz();
+    };
+
+    function showNextQuiz() {
+        const target = vocabulary[Math.floor(Math.random() * vocabulary.length)];
+        document.getElementById('quizWord').innerText = target.word;
+        let options = [target];
+        while(options.length < 3) {
+            let rand = vocabulary[Math.floor(Math.random() * vocabulary.length)];
+            if(!options.find(o => o.word === rand.word)) options.push(rand);
+        }
+        options.sort(() => Math.random() - 0.5);
+        const container = document.getElementById('quizOptions');
+        container.innerHTML = '';
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'quiz-option';
+            btn.innerText = opt.korean || opt.meaning;
+            btn.onclick = () => {
+                if(opt.word === target.word) {
+                    alert("정답! 🎉");
+                    showNextQuiz();
+                } else {
+                    alert(`오답! 정답은 [${target.word}]`);
+                    wrongAnswers.add(target.word);
+                    showWrongNote();
+                    showNextQuiz();
+                }
+            };
+            container.appendChild(btn);
+        });
+    }
+
+    function showWrongNote() {
+        document.getElementById('wrongNote').style.display = 'block';
+        const list = document.getElementById('wrongList');
+        list.innerHTML = '';
+        wrongAnswers.forEach(w => {
+            const li = document.createElement('li');
+            li.innerText = w;
+            list.appendChild(li);
+        });
+    }
+
+    document.getElementById('closeQuizBtn').onclick = () => {
+        document.getElementById('quizArea').style.display = 'none';
+    };
+</script>
+</body>
+</html>
