@@ -119,30 +119,36 @@
         });
     }
 
-    // 검색 & 저장 (기존 로직 유지)
-    document.getElementById('searchBtn').onclick = async () => {
-        const word = document.getElementById('wordInput').value.trim();
-        if(!word) return;
-        document.getElementById('resWord').innerText = word;
-        document.getElementById('searchResult').style.display = 'block';
-        document.getElementById('resMeaning').value = "검색 중...";
-        
-        document.getElementById('externalLinks').innerHTML = `
-            <a href="https://dictionary.cambridge.org/dictionary/english/${word}" target="_blank" style="font-size:12px; margin-right:5px;">↗Cambridge</a>
-            <a href="https://www.oxfordlearnersdictionaries.com/definition/english/${word}" target="_blank" style="font-size:12px;">↗Oxford</a>
-        `;
+// 단어 검색 버튼 클릭 시 로직 수정
+document.getElementById('searchBtn').onclick = async () => {
+    const word = document.getElementById('wordInput').value.trim();
+    if(!word) return;
 
-        try {
-            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-            const data = await res.json();
-            if(!data.title) {
-                document.getElementById('resPhonetic').innerText = data[0].phonetic || "";
-                document.getElementById('resMeaning').value = data[0].meanings[0].definitions[0].definition;
-            } else {
-                document.getElementById('resMeaning').value = "뜻을 찾지 못했습니다. 직접 입력해주세요.";
-            }
-        } catch(e) { document.getElementById('resMeaning').value = "입력 대기 중..."; }
-    };
+    // --- [추가] 이전 검색 결과 초기화 ---
+    document.getElementById('resWord').innerText = word;
+    document.getElementById('resPhonetic').innerText = ""; // 발음기호 초기화
+    document.getElementById('resMeaning').value = "검색 중..."; // 영영뜻 초기화
+    document.getElementById('resKorean').value = ""; // 한글 뜻 입력칸 초기화 (이 부분!)
+    document.getElementById('searchResult').style.display = 'block';
+    // ------------------------------------
+
+    updateLinks(word); // 외부 사전 링크 업데이트
+
+    try {
+        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+        const data = await res.json();
+        
+        if(!data.title) {
+            const entry = data[0];
+            document.getElementById('resPhonetic').innerText = entry.phonetic || (entry.phonetics[0] ? entry.phonetics[0].text : "");
+            document.getElementById('resMeaning').value = entry.meanings[0].definitions[0].definition;
+        } else {
+            document.getElementById('resMeaning').value = "기본 사전에 뜻이 없습니다. 외부 링크를 확인하고 직접 입력해주세요.";
+        }
+    } catch(e) {
+        document.getElementById('resMeaning').value = "네트워크 오류가 발생했습니다. 직접 입력을 권장합니다.";
+    }
+};
 
     document.getElementById('saveBtn').onclick = () => {
         const word = document.getElementById('resWord').innerText;
@@ -254,3 +260,4 @@
 </script>
 </body>
 </html>
+
