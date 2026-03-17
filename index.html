@@ -3,24 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium Voca - Today's Quiz</title>
+    <title>Advanced Voca Cloud</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
         :root { --main: #6c5ce7; --bg: #f0f2f5; --card: #ffffff; --text: #2d3436; --accent: #00b894; --warn: #d63031; }
         body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 550px; background: var(--card); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-        #authOverlay { position: fixed; inset: 0; background: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; }
+        
+        #authOverlay { position: fixed; inset: 0; background: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 3000; }
         .input-style { padding: 12px 15px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; width: 100%; box-sizing: border-box; }
         .btn { padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; }
         .btn-main { background: var(--main); color: white; }
+        .btn-sub { background: #81ecec; color: #2d3436; }
         .btn-today { background: #ff7675; color: white; }
+
         #searchResult { background: #f9f9ff; padding: 20px; border-radius: 15px; margin: 20px 0; display: none; border: 1px solid #e0e0ff; }
-        .word-item { background: white; padding: 15px; border-radius: 15px; margin-bottom: 12px; border: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
-        #quizArea { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:30px; border-radius:20px; width:85%; max-width:400px; z-index:1500; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
-        .quiz-opt { width:100%; margin:8px 0; text-align:left; background: #f8f9fa; border: 1px solid #eee; }
-        .quiz-type-btn { flex: 1; padding: 10px; border: 1px solid var(--main); background: white; color: var(--main); border-radius: 8px; }
-        .quiz-type-btn.active { background: var(--main); color: white; }
+        .link-tag { font-size: 12px; padding: 6px 10px; background: #eee; border-radius: 6px; text-decoration: none; color: var(--main); font-weight: bold; border: 1px solid #ddd; }
+
+        /* 모달 스타일 (퀴즈 및 목록 보기 공통) */
+        .modal { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:25px; border-radius:20px; width:90%; max-width:480px; height: 80vh; overflow-y: auto; z-index:2000; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; position: sticky; top: 0; background: white; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+        
+        /* 단어 아이템 스타일 */
+        .word-item { background: #f8f9fa; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #efefef; display: flex; justify-content: space-between; align-items: center; }
+        .word-item b { color: var(--main); font-size: 1.1em; } /* 단어 색상 변경 */
+        .word-item .kor-txt { color: #2d3436; font-weight: 800; margin-right: 5px; } /* 한글 뜻 강조 */
+        .word-item small { color: #636e72; display: block; margin-top: 3px; font-size: 0.85em; }
+
+        .overlay-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1500; }
     </style>
 </head>
 <body>
@@ -35,44 +46,55 @@
     <h2 style="text-align:center; color: var(--main); margin-top:0;">My Voca Cloud</h2>
     
     <div style="display:flex; gap:8px; margin-bottom:20px;">
-        <input type="text" id="wordInput" class="input-style" placeholder="단어 입력">
+        <input type="text" id="wordInput" class="input-style" placeholder="단어 입력 (English)">
         <button id="searchBtn" class="btn btn-main">검색</button>
     </div>
 
     <div id="searchResult">
         <h3 id="resWord" style="margin:0; color:var(--main)"></h3>
-        <p id="resPhonetic" style="color:#aaa; font-size: 14px;"></p>
+        <div id="externalLinks" style="margin: 10px 0; display: flex; flex-wrap: wrap; gap: 5px;"></div>
         <textarea id="resMeaning" class="input-style" rows="3" style="margin-bottom:10px; resize:none; font-size:14px;"></textarea>
         <div style="display:flex; gap:5px; margin-bottom:10px;">
             <input type="text" id="resKorean" class="input-style" placeholder="한글 뜻">
             <button id="naverBtn" class="btn" style="background:#03cf5d; color:white;">네이버</button>
         </div>
-        <button id="saveBtn" class="btn btn-main" style="width:100%;">저장</button>
+        <button id="saveBtn" class="btn btn-main" style="width:100%;">단어장에 저장</button>
     </div>
 
-    <div style="display:flex; gap:10px; margin-bottom:15px;">
-        <button id="startQuizBtn" class="btn btn-main" style="flex:1;">전체 퀴즈</button>
-        <button id="todayQuizBtn" class="btn btn-today" style="flex:1;">오늘의 퀴즈</button>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
+        <button id="startQuizBtn" class="btn btn-main">전체 퀴즈</button>
+        <button id="todayQuizBtn" class="btn btn-today">오늘의 퀴즈</button>
+        <button id="viewAllBtn" class="btn btn-sub">전체 단어 보기</button>
+        <button id="viewTodayBtn" class="btn btn-sub" style="background:#fab1a0;">오늘 단어 보기</button>
     </div>
-
-    <div id="wordList"></div>
 </div>
 
-<div id="quizArea">
+<div class="overlay-bg" id="overlayBg"></div>
+
+<div class="modal" id="listModal">
+    <div class="modal-header">
+        <h3 id="modalTitle" style="margin:0;">단어 목록</h3>
+        <select id="sortOrder" style="border:1px solid #ddd; border-radius:5px; padding:5px;">
+            <option value="date">최신순</option>
+            <option value="abc">ABC순</option>
+        </select>
+    </div>
+    <div id="modalWordList"></div>
+    <button class="btn" onclick="closeModal('listModal')" style="width:100%; margin-top:20px; background:#eee;">닫기</button>
+</div>
+
+<div class="modal" id="quizModal" style="height: auto;">
     <div style="display:flex; gap:10px; margin-bottom:20px;">
-        <button class="quiz-type-btn active" id="modeChoice">객관식</button>
-        <button class="quiz-type-btn" id="modeWrite">주관식</button>
+        <button class="btn btn-main active" id="modeChoice" style="flex:1;">객관식</button>
+        <button class="btn btn-main" id="modeWrite" style="flex:1; background:#eee; color:#666;">주관식</button>
     </div>
-    <div id="quizContent">
-        <p id="quizTypeLabel" style="color:#666; font-size:12px; margin-bottom:5px;">의미를 보고 단어를 맞추세요</p>
-        <h3 id="quizQuestion" style="margin-bottom:20px; line-height:1.4; font-size: 18px; color: #333;"></h3>
-        <div id="quizOptions"></div>
-        <div id="quizWriteArea" style="display:none;">
-            <input type="text" id="quizAnswerInput" class="input-style" placeholder="단어 입력" autocomplete="off">
-            <button id="submitAnswerBtn" class="btn btn-main" style="width:100%; margin-top:10px;">확인</button>
-        </div>
+    <h3 id="quizQuestion" style="line-height:1.4; min-height:60px;"></h3>
+    <div id="quizOptions"></div>
+    <div id="quizWriteArea" style="display:none;">
+        <input type="text" id="quizAnswerInput" class="input-style" placeholder="정답 입력" autocomplete="off">
+        <button id="submitAnswerBtn" class="btn btn-main" style="width:100%; margin-top:10px;">확인</button>
     </div>
-    <button id="closeQuizBtn" class="btn" style="width:100%; margin-top:20px; background:#eee;">닫기</button>
+    <button class="btn" onclick="closeModal('quizModal')" style="width:100%; margin-top:20px; background:#eee;">그만하기</button>
 </div>
 
 <script>
@@ -89,10 +111,10 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     let vocabulary = [];
-    let quizPool = []; 
-    let quizMode = 'choice'; 
-    let currentTarget = null;
+    let quizPool = [];
+    let currentListView = 'all'; // 'all' or 'today'
 
+    // 로그인
     document.getElementById('loginBtn').onclick = () => {
         if(document.getElementById('pwInput').value === "3346") {
             document.getElementById('authOverlay').style.display = 'none';
@@ -105,24 +127,30 @@
         db.ref('words/').on('value', (snap) => {
             const val = snap.val();
             vocabulary = val ? Object.keys(val).map(k => ({id:k, ...val[k]})) : [];
-            renderList();
         });
     }
 
+    // 검색 & 사전 링크 복구
     document.getElementById('searchBtn').onclick = async () => {
         const word = document.getElementById('wordInput').value.trim();
         if(!word) return;
         document.getElementById('resWord').innerText = word;
-        document.getElementById('resKorean').value = ""; 
+        document.getElementById('resKorean').value = "";
         document.getElementById('resMeaning').value = "Searching...";
         document.getElementById('searchResult').style.display = 'block';
+
+        const links = [
+            {n:'Cambridge', u:`https://dictionary.cambridge.org/dictionary/english/${word}`},
+            {n:'Oxford', u:`https://www.oxfordlearnersdictionaries.com/definition/english/${word}`},
+            {n:'Naver', u:`https://en.dict.naver.com/#/search?query=${word}`}
+        ];
+        document.getElementById('externalLinks').innerHTML = links.map(l => `<a href="${l.u}" target="_blank" class="link-tag">${l.n} ↗</a>`).join('');
+
         try {
             const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
             const data = await res.json();
-            if(!data.title) {
-                document.getElementById('resMeaning').value = data[0].meanings[0].definitions[0].definition;
-                document.getElementById('resPhonetic').innerText = data[0].phonetic || "";
-            } else { document.getElementById('resMeaning').value = ""; }
+            if(!data.title) document.getElementById('resMeaning').value = data[0].meanings[0].definitions[0].definition;
+            else document.getElementById('resMeaning').value = "";
         } catch(e) { document.getElementById('resMeaning').value = ""; }
     };
 
@@ -130,36 +158,58 @@
         const word = document.getElementById('resWord').innerText;
         const meaning = document.getElementById('resMeaning').value;
         const korean = document.getElementById('resKorean').value;
-        const phonetic = document.getElementById('resPhonetic').innerText;
-        db.ref('words/').push({ word, meaning, korean, phonetic, timestamp: Date.now() });
+        db.ref('words/').push({ word, meaning, korean, timestamp: Date.now() });
         document.getElementById('searchResult').style.display = 'none';
         document.getElementById('wordInput').value = '';
     };
 
-    function renderList() {
-        const list = document.getElementById('wordList');
-        list.innerHTML = '';
-        [...vocabulary].reverse().forEach(item => {
+    // --- 목록 보기 팝업 제어 ---
+    function openListModal(type) {
+        currentListView = type;
+        document.getElementById('modalTitle').innerText = type === 'all' ? "전체 단어 목록" : "오늘의 단어 목록";
+        document.getElementById('overlayBg').style.display = 'block';
+        document.getElementById('listModal').style.display = 'block';
+        renderModalList();
+    }
+
+    function renderModalList() {
+        const listEl = document.getElementById('modalWordList');
+        const sort = document.getElementById('sortOrder').value;
+        listEl.innerHTML = '';
+        
+        let filtered = [...vocabulary];
+        if(currentListView === 'today') {
+            const todayStart = new Date().setHours(0,0,0,0);
+            filtered = filtered.filter(w => w.timestamp >= todayStart);
+        }
+
+        if(sort === 'abc') filtered.sort((a,b) => a.word.localeCompare(b.word));
+        else filtered.sort((a,b) => b.timestamp - a.timestamp);
+
+        filtered.forEach(item => {
             const div = document.createElement('div');
             div.className = 'word-item';
-            div.innerHTML = `<div><b>${item.word}</b><br><small>${item.korean || ''} ${item.meaning}</small></div>
+            div.innerHTML = `<div><b>${item.word}</b><br><small><span class="kor-txt">${item.korean || ''}</span> ${item.meaning}</small></div>
                              <button class="btn" onclick="deleteWord('${item.id}')" style="background:#ffeaa7; color:#d63031; font-size:11px;">삭제</button>`;
-            list.appendChild(div);
+            listEl.appendChild(div);
         });
     }
-    window.deleteWord = (id) => { if(confirm("삭제?")) db.ref('words/'+id).remove(); };
 
-    // --- 퀴즈 로직 (오늘의 단어 필터링) ---
+    window.deleteWord = (id) => { if(confirm("삭제하시겠습니까?")) db.ref('words/'+id).remove().then(() => renderModalList()); };
+    document.getElementById('sortOrder').onchange = renderModalList;
+    document.getElementById('viewAllBtn').onclick = () => openListModal('all');
+    document.getElementById('viewTodayBtn').onclick = () => openListModal('today');
+
+    // --- 퀴즈 로직 (이전과 동일하되 모달 적용) ---
+    let quizMode = 'choice';
+    let currentTarget = null;
+
     function startQuiz(isTodayOnly) {
-        if(isTodayOnly) {
-            const todayStart = new Date().setHours(0,0,0,0);
-            quizPool = vocabulary.filter(w => w.timestamp >= todayStart);
-            if(quizPool.length < 1) return alert("오늘 등록한 단어가 없습니다.");
-        } else {
-            quizPool = [...vocabulary];
-            if(quizPool.length < 3) return alert("단어를 3개 이상 등록해주세요.");
-        }
-        document.getElementById('quizArea').style.display = 'block';
+        const pool = isTodayOnly ? vocabulary.filter(w => w.timestamp >= new Date().setHours(0,0,0,0)) : [...vocabulary];
+        if(pool.length < (isTodayOnly ? 1 : 3)) return alert("단어가 부족합니다.");
+        quizPool = pool;
+        document.getElementById('overlayBg').style.display = 'block';
+        document.getElementById('quizModal').style.display = 'block';
         nextQuiz();
     }
 
@@ -168,28 +218,18 @@
 
     function nextQuiz() {
         currentTarget = quizPool[Math.floor(Math.random()*quizPool.length)];
-        // 영어 뜻을 먼저 보여주고, 없으면 한글 뜻 노출
         document.getElementById('quizQuestion').innerText = currentTarget.meaning || currentTarget.korean;
         document.getElementById('quizAnswerInput').value = '';
-        
         if(quizMode === 'choice') {
             document.getElementById('quizOptions').style.display = 'block';
             document.getElementById('quizWriteArea').style.display = 'none';
             let opts = [currentTarget];
-            let allOptions = vocabulary.length >= 3 ? vocabulary : quizPool;
-            while(opts.length < Math.min(3, allOptions.length)) {
-                let r = allOptions[Math.floor(Math.random()*allOptions.length)];
+            while(opts.length < Math.min(3, vocabulary.length)) {
+                let r = vocabulary[Math.floor(Math.random()*vocabulary.length)];
                 if(!opts.find(o=>o.word===r.word)) opts.push(r);
             }
             opts.sort(()=>Math.random()-0.5);
-            document.getElementById('quizOptions').innerHTML = '';
-            opts.forEach(o => {
-                const b = document.createElement('button');
-                b.className = 'btn quiz-opt';
-                b.innerText = o.word;
-                b.onclick = () => checkAnswer(o.word);
-                document.getElementById('quizOptions').appendChild(b);
-            });
+            document.getElementById('quizOptions').innerHTML = opts.map(o => `<button class="btn quiz-opt" onclick="checkAnswer('${o.word}')">${o.word}</button>`).join('');
         } else {
             document.getElementById('quizOptions').style.display = 'none';
             document.getElementById('quizWriteArea').style.display = 'block';
@@ -197,21 +237,27 @@
         }
     }
 
-    function checkAnswer(input) {
-        if(input.toLowerCase().trim() === currentTarget.word.toLowerCase().trim()) {
-            alert("정답입니다! 🎉");
-            nextQuiz();
-        } else {
-            alert(`오답! 정답은 [ ${currentTarget.word} ]\n뜻: ${currentTarget.korean || ''}`);
-            nextQuiz();
-        }
-    }
+    window.checkAnswer = (input) => {
+        if(input.toLowerCase().trim() === currentTarget.word.toLowerCase().trim()) { alert("정답! 🎉"); nextQuiz(); }
+        else alert(`오답! 정답: ${currentTarget.word}`);
+    };
 
     document.getElementById('submitAnswerBtn').onclick = () => checkAnswer(document.getElementById('quizAnswerInput').value);
-    document.getElementById('quizAnswerInput').onkeyup = (e) => { if(e.key==='Enter') document.getElementById('submitAnswerBtn').click(); };
-    document.getElementById('modeChoice').onclick = () => { quizMode='choice'; document.getElementById('modeChoice').classList.add('active'); document.getElementById('modeWrite').classList.remove('active'); nextQuiz(); };
-    document.getElementById('modeWrite').onclick = () => { quizMode='write'; document.getElementById('modeWrite').classList.add('active'); document.getElementById('modeChoice').classList.remove('active'); nextQuiz(); };
-    document.getElementById('closeQuizBtn').onclick = () => document.getElementById('quizArea').style.display='none';
+    document.getElementById('modeChoice').onclick = () => { quizMode='choice'; updateQuizBtnStyles(); nextQuiz(); };
+    document.getElementById('modeWrite').onclick = () => { quizMode='write'; updateQuizBtnStyles(); nextQuiz(); };
+    
+    function updateQuizBtnStyles() {
+        document.getElementById('modeChoice').style.background = quizMode==='choice' ? 'var(--main)' : '#eee';
+        document.getElementById('modeChoice').style.color = quizMode==='choice' ? 'white' : '#666';
+        document.getElementById('modeWrite').style.background = quizMode==='write' ? 'var(--main)' : '#eee';
+        document.getElementById('modeWrite').style.color = quizMode==='write' ? 'white' : '#666';
+    }
+
+    window.closeModal = (id) => { 
+        document.getElementById(id).style.display = 'none'; 
+        document.getElementById('overlayBg').style.display = 'none'; 
+    };
+
     document.getElementById('naverBtn').onclick = () => window.open(`https://en.dict.naver.com/#/search?query=${document.getElementById('resWord').innerText}`, 'naver', 'width=500,height=700');
 </script>
 </body>
