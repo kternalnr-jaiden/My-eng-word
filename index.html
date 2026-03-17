@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voca & Phrase Cloud v2.7 - Full Restored</title>
+    <title>Voca & Phrase Cloud v2.8 - Full Feature</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
@@ -17,12 +17,15 @@
         .btn { padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; }
         .btn-main { background: var(--main); color: white; }
         .btn-sub { background: #81ecec; color: #2d3436; }
-        .btn-delete { background: #ffeaa7; color: #d63031; padding: 5px 10px; font-size: 12px; }
+        .btn-delete { background: #ffeaa7; color: #d63031; padding: 5px 10px; font-size: 12px; border-radius: 5px; }
         .modal { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:25px; border-radius:20px; width:90%; max-width:480px; height: 85vh; overflow-y: auto; z-index:2000; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+        .close-x { position: absolute; right: 20px; top: 20px; font-size: 28px; cursor: pointer; color: #aaa; border: none; background: none; }
         .overlay-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1500; }
         .item-card { background: #f8f9fa; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #efefef; display: flex; justify-content: space-between; align-items: center; }
         .quiz-opt { width: 100%; margin-bottom: 8px; text-align: left; background: #f1f2f6; }
-        #quizResultOverlay { display:none; margin-top:15px; padding:15px; border-radius:12px; text-align:center; background:#e8f8f5; }
+        .sort-bar { display: flex; gap: 5px; margin-bottom: 15px; }
+        .sort-btn { font-size: 11px; padding: 5px 10px; background: #eee; border-radius: 5px; cursor: pointer; border: none; }
+        .sort-btn.active { background: var(--main); color: white; }
     </style>
 </head>
 <body>
@@ -71,15 +74,25 @@
     </div>
 </div>
 
-<div class="overlay-bg" id="overlayBg"></div>
+<div class="overlay-bg" id="overlayBg" onclick="closeModal('commonModal')"></div>
 <div class="modal" id="commonModal">
+    <button class="close-x" onclick="closeModal('commonModal')">&times;</button>
     <h3 id="modalTitle" style="margin-top:0;"></h3>
+    
+    <div id="listHeader" style="display:none;">
+        <input type="text" id="modalSearch" class="input-style" placeholder="Search in list..." oninput="filterModalList()">
+        <div class="sort-bar">
+            <button class="sort-btn active" id="sortNew" onclick="setSort('new')">Recently Added</button>
+            <button class="sort-btn" id="sortABC" onclick="setSort('abc')">A-Z</button>
+        </div>
+    </div>
+
     <div id="modalContent"></div>
+
     <div id="trashSection" style="margin-top:20px; border-top: 2px dashed #eee; display:none;">
-        <p style="font-size:12px; color:#aaa; margin-top:10px;">Trash Bin (Undo within 24h)</p>
+        <p style="font-size:12px; color:#aaa; margin-top:10px;">Trash Bin (24h Safety Net)</p>
         <div id="trashList"></div>
     </div>
-    <button onclick="closeModal('commonModal')" class="btn" style="width:100%; margin-top:20px; background:#f1f2f6;">Close</button>
 </div>
 
 <script>
@@ -89,6 +102,7 @@
     
     let words = [], phrases = [], deleted = [];
     let currentQuizTarget = null, currentQuizPool = [], quizMode = 'choice';
+    let activeType = 'word', activeSort = 'new';
 
     db.ref('words/').on('value', s => { const v=s.val(); words = v?Object.keys(v).map(k=>({id:k,...v[k]})):[]; });
     db.ref('phrases/').on('value', s => { const v=s.val(); phrases = v?Object.keys(v).map(k=>({id:k,...v[k]})):[]; });
@@ -97,7 +111,60 @@
     function speak(t) { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang='en-US'; u.rate=0.9; window.speechSynthesis.speak(u); }
     function switchTab(t) { document.getElementById('wordSection').style.display = t==='word'?'block':'none'; document.getElementById('phraseSection').style.display = t==='phrase'?'block':'none'; document.getElementById('tabWord').className = t==='word'?'tab active':'tab'; document.getElementById('tabPhrase').className = t==='phrase'?'tab active':'tab'; }
 
-    // Search Logic
+    // REAL-TIME MODAL FILTERING & SORTING
+    function setSort(s) {
+        activeSort = s;
+        document.getElementById('sortNew').className = s==='new'?'sort-btn active':'sort-btn';
+        document.getElementById('sortABC').className = s==='abc'?'sort-btn active':'sort-btn';
+        renderListContent();
+    }
+
+    function filterModalList() { renderListContent(); }
+
+    function openList(type) {
+        activeType = type;
+        document.getElementById('modalTitle').innerText = type==='word'?"All Words":type==='today'?"Today's Words":"All Phrases";
+        document.getElementById('listHeader').style.display = 'block';
+        document.getElementById('modalSearch').value = '';
+        renderListContent();
+        document.getElementById('overlayBg').style.display = 'block';
+        document.getElementById('commonModal').style.display = 'block';
+    }
+
+    function renderListContent() {
+        const query = document.getElementById('modalSearch').value.toLowerCase();
+        const content = document.getElementById('modalContent');
+        content.innerHTML = '';
+        
+        let data = activeType==='phrase' ? [...phrases] : [...words];
+        if(activeType==='today') data = words.filter(w => w.timestamp >= new Date().setHours(0,0,0,0));
+
+        // Sorting
+        if(activeSort === 'abc') {
+            data.sort((a,b) => (a.word||a.phrase).localeCompare(b.word||b.phrase));
+        } else {
+            data.sort((a,b) => b.timestamp - a.timestamp);
+        }
+
+        // Filtering
+        const filtered = data.filter(item => (item.word||item.phrase).toLowerCase().includes(query) || (item.korean||'').toLowerCase().includes(query));
+
+        filtered.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'item-card';
+            const isP = activeType==='phrase';
+            div.innerHTML = `<div><b>${isP?item.phrase:item.word}</b> ${!isP?`<small style="color:var(--accent)">${item.phonetic||''}</small>`:''}<br><small>${isP?item.meaning:`${item.korean} | ${item.meaning}`}</small></div>
+                             <button class="btn btn-delete" onclick="deleteEntry('${isP?'phrase':'word'}', '${item.id}')">🗑️</button>`;
+            content.appendChild(div);
+        });
+
+        // Trash logic remains same...
+        const relevantTrash = deleted.filter(d => d.originalType === (activeType==='phrase'?'phrase':'word'));
+        document.getElementById('trashSection').style.display = relevantTrash.length > 0 ? 'block' : 'none';
+        document.getElementById('trashList').innerHTML = relevantTrash.map(t => `<div style="display:flex; justify-content:space-between; align-items:center; padding:5px; border-bottom:1px solid #eee;"><span>${t.phrase||t.word}</span><button onclick="restoreEntry('${t.id}')" style="background:var(--accent); color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer;">Undo ↩️</button></div>`).join('');
+    }
+
+    // CRUD & QUIZ LOGIC (Fixed & Restored)
     document.getElementById('searchBtn').onclick = async () => {
         const w = document.getElementById('wordInput').value.trim();
         if(!w) return;
@@ -124,22 +191,18 @@
         document.getElementById('phraseInput').value = ''; document.getElementById('phraseMeaningInput').value = '';
     };
 
-    // Quiz Logic
     function startQuiz(isToday) {
         currentQuizPool = isToday ? words.filter(w => w.timestamp >= new Date().setHours(0,0,0,0)) : words;
         if(currentQuizPool.length < 1) return alert("No words found.");
         document.getElementById('modalTitle').innerText = "Quiz Session";
+        document.getElementById('listHeader').style.display = 'none';
         const content = document.getElementById('modalContent');
         content.innerHTML = `
             <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <button onclick="setQuizMode('choice')" id="mChoice" class="btn btn-main" style="flex:1;">Multiple Choice</button>
-                <button onclick="setQuizMode('write')" id="mWrite" class="btn" style="flex:1; background:#eee; color:#666;">Writing</button>
+                <button onclick="setQuizMode('choice')" id="mChoice" class="btn btn-main" style="flex:1;">Choice</button>
+                <button onclick="setQuizMode('write')" id="mWrite" class="btn" style="flex:1; background:#eee;">Writing</button>
             </div>
-            <div id="quizContainer" style="text-align:center;">
-                <h2 id="qMeaning" style="margin-bottom:15px; color: var(--main);"></h2>
-                <div id="quizInterface"></div>
-                <div id="quizResultOverlay"></div>
-            </div>`;
+            <div id="quizContainer" style="text-align:center;"><h2 id="qMeaning" style="margin-bottom:15px; color: var(--main);"></h2><div id="quizInterface"></div><div id="quizResultOverlay" style="display:none; background:#e8f8f5; padding:15px; border-radius:10px;"></div></div>`;
         document.getElementById('overlayBg').style.display = 'block';
         document.getElementById('commonModal').style.display = 'block';
         setQuizMode('choice');
@@ -158,8 +221,7 @@
         currentQuizTarget = currentQuizPool[Math.floor(Math.random()*currentQuizPool.length)];
         document.getElementById('qMeaning').innerText = currentQuizTarget.korean || currentQuizTarget.meaning;
         document.getElementById('quizResultOverlay').style.display = 'none';
-        const interface = document.getElementById('quizInterface');
-        interface.style.display = 'block';
+        const interface = document.getElementById('quizInterface'); interface.style.display = 'block';
         if(quizMode === 'choice') {
             let opts = [currentQuizTarget];
             while(opts.length < Math.min(4, words.length)) {
@@ -188,37 +250,11 @@
         }
     }
 
-    // List & Trash Logic
-    function openList(type) {
-        document.getElementById('modalTitle').innerText = type==='word'?"All Words":type==='today'?"Today's Words":"All Phrases";
-        const content = document.getElementById('modalContent');
-        content.innerHTML = '';
-        let data = type==='phrase' ? phrases : words;
-        if(type==='today') data = words.filter(w => w.timestamp >= new Date().setHours(0,0,0,0));
-        data.forEach(item => {
-            const div = document.createElement('div');
-            div.className = 'item-card';
-            const isP = type==='phrase';
-            div.innerHTML = `<div><b>${isP?item.phrase:item.word}</b> ${!isP?`<small style="color:var(--accent)">${item.phonetic||''}</small>`:''}<br><small>${isP?item.meaning:`${item.korean} | ${item.meaning}`}</small></div>
-                             <button class="btn btn-delete" onclick="deleteEntry('${isP?'phrase':'word'}', '${item.id}')">🗑️</button>`;
-            content.appendChild(div);
-        });
-
-        const trashSection = document.getElementById('trashSection');
-        const trashList = document.getElementById('trashList');
-        const relevantTrash = deleted.filter(d => d.originalType === (type==='phrase'?'phrase':'word'));
-        trashSection.style.display = relevantTrash.length > 0 ? 'block' : 'none';
-        trashList.innerHTML = relevantTrash.map(t => `<div style="display:flex; justify-content:space-between; align-items:center; padding:5px; border-bottom:1px solid #eee;"><span>${t.phrase||t.word}</span><button onclick="restoreEntry('${t.id}')" style="background:var(--accent); color:white; border:none; border-radius:4px; font-size:10px; padding:3px 8px; cursor:pointer;">Undo ↩️</button></div>`).join('');
-
-        document.getElementById('overlayBg').style.display = 'block';
-        document.getElementById('commonModal').style.display = 'block';
-    }
-
     function deleteEntry(type, id) {
         const item = (type==='phrase'?phrases:words).find(x=>x.id===id);
         db.ref('trash/').push({...item, originalType: type, deletedAt: Date.now()});
         db.ref((type==='phrase'?'phrases/':'words/') + id).remove();
-        openList(type);
+        renderListContent();
     }
 
     function restoreEntry(id) {
@@ -226,7 +262,7 @@
         const {id:oldId, deletedAt, originalType, ...cleanItem} = item;
         db.ref((originalType==='phrase'?'phrases/':'words/')).push(cleanItem);
         db.ref('trash/'+id).remove();
-        openList(originalType);
+        renderListContent();
     }
 
     function closeModal(id) { document.getElementById(id).style.display='none'; document.getElementById('overlayBg').style.display='none'; window.onkeydown = null; }
