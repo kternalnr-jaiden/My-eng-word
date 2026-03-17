@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voca & Phrase Cloud v2.2</title>
+    <title>Voca & Phrase Cloud v2.3</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
@@ -105,6 +105,7 @@
     let words = [];
     let phrases = [];
     let currentQuizTarget = null;
+    let currentQuizPool = [];
 
     db.ref('words/').on('value', snap => {
         const val = snap.val();
@@ -179,37 +180,53 @@
         document.getElementById('commonModal').style.display = 'block';
     }
 
-    // Fixed Word Quiz
+    // --- Continuous Quiz Logic ---
     function startQuiz(isToday) {
-        let pool = isToday ? words.filter(w => w.timestamp >= new Date().setHours(0,0,0,0)) : words;
-        if(pool.length < 1) return alert("No words found for quiz.");
-        document.getElementById('modalTitle').innerText = "Word Quiz";
+        currentQuizPool = isToday ? words.filter(w => w.timestamp >= new Date().setHours(0,0,0,0)) : words;
+        if(currentQuizPool.length < 1) return alert("No words found for quiz.");
+        
+        document.getElementById('modalTitle').innerText = "Word Quiz Session";
         const content = document.getElementById('modalContent');
         content.innerHTML = `
-            <div id="quizArea" style="text-align:center;">
-                <h2 id="qMeaning" style="margin-bottom:20px;"></h2>
-                <input type="text" id="qInput" class="input-style" placeholder="Spelling..." autocomplete="off">
-                <button onclick="checkQuiz()" class="btn btn-main" style="width:100%;">Submit (Enter)</button>
+            <div id="quizArea" style="text-align:center; padding: 20px 0;">
+                <h2 id="qMeaning" style="margin-bottom:20px; color: var(--main);"></h2>
+                <input type="text" id="qInput" class="input-style" placeholder="Type the English spelling..." autocomplete="off" style="text-align:center;">
+                <button onclick="checkQuiz()" class="btn btn-main" style="width:100%; margin-top: 10px;">Check Answer</button>
+                <button onclick="closeModal('commonModal')" class="btn" style="width:100%; margin-top: 10px; background:#eee;">Finish & Exit</button>
             </div>`;
         
-        currentQuizTarget = pool[Math.floor(Math.random()*pool.length)];
-        document.getElementById('qMeaning').innerText = currentQuizTarget.korean || currentQuizTarget.meaning;
         document.getElementById('overlayBg').style.display = 'block';
         document.getElementById('commonModal').style.display = 'block';
         
+        loadNextQuestion();
+    }
+
+    function loadNextQuestion() {
+        currentQuizTarget = currentQuizPool[Math.floor(Math.random()*currentQuizPool.length)];
+        document.getElementById('qMeaning').innerText = currentQuizTarget.korean || currentQuizTarget.meaning;
         const input = document.getElementById('qInput');
+        input.value = '';
         input.focus();
         input.onkeydown = (e) => { if(e.key==='Enter') checkQuiz(); };
     }
 
     function checkQuiz() {
-        const input = document.getElementById('qInput').value.trim().toLowerCase();
-        if(input === currentQuizTarget.word.toLowerCase()) {
+        const inputField = document.getElementById('qInput');
+        const userInput = inputField.value.trim().toLowerCase();
+        
+        if(userInput === currentQuizTarget.word.toLowerCase()) {
             speak(currentQuizTarget.word);
-            alert("Correct! 🎉");
-            closeModal('commonModal');
+            // Visual feedback instead of alert for better flow
+            inputField.style.borderColor = "var(--accent)";
+            setTimeout(() => {
+                inputField.style.borderColor = "#eee";
+                loadNextQuestion();
+            }, 600);
         } else {
-            alert(`Wrong! The answer was: ${currentQuizTarget.word}`);
+            inputField.style.borderColor = "var(--warn)";
+            alert(`Not quite! The answer was: ${currentQuizTarget.word}`);
+            inputField.style.borderColor = "#eee";
+            loadNextQuestion(); // Move to next even if wrong
         }
     }
 
@@ -226,7 +243,10 @@
         speak(target.phrase);
     }
 
-    function closeModal(id) { document.getElementById(id).style.display='none'; document.getElementById('overlayBg').style.display='none'; }
+    function closeModal(id) { 
+        document.getElementById(id).style.display='none'; 
+        document.getElementById('overlayBg').style.display='none'; 
+    }
 </script>
 </body>
 </html>
