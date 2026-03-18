@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voca & Phrase Cloud v3.5 - Complete Edition</title>
+    <title>Voca & Phrase Cloud v3.7 - Full Feature Set</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
@@ -11,33 +11,32 @@
         body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 550px; background: var(--card); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
         
-        /* Tab Styling */
+        /* Tabs */
         .tab-menu { display: flex; gap: 15px; margin-bottom: 20px; border-bottom: 2px solid #eee; }
-        .tab { cursor: pointer; font-weight: bold; color: #aaa; padding: 10px 5px; transition: 0.3s; }
+        .tab { cursor: pointer; font-weight: bold; color: #aaa; padding: 10px 5px; }
         .tab.active { color: var(--main); border-bottom: 3px solid var(--main); }
 
+        /* Inputs & Buttons */
         .input-style { padding: 12px 15px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; width: 100%; box-sizing: border-box; margin-bottom: 10px; outline: none; }
         .btn { padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; }
         .btn-main { background: var(--main); color: white; }
         .btn-today { background: #ff7675; color: white; }
         .btn-sub { background: #81ecec; color: #2d3436; }
-        .btn-phrase { background: var(--phrase); color: #2d3436; width: 100%; margin-bottom: 10px; }
 
+        /* Modals & Overlays */
         .modal { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:25px; border-radius:20px; width:90%; max-width:480px; height: 85vh; overflow-y: auto; z-index:2000; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
         .overlay-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1500; }
         
+        /* List Items */
         .item-card { background: #f8f9fa; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #efefef; position: relative; }
-        .delete-btn { position: absolute; right: 10px; top: 10px; color: #ccc; cursor: pointer; font-size: 18px; }
+        .delete-btn { position: absolute; right: 15px; top: 15px; color: #d63031; cursor: pointer; font-size: 18px; font-weight: bold; }
         
-        /* Real-time Filter Results */
-        #filterResults { margin-top: 5px; max-height: 200px; overflow-y: auto; border: 1px solid #eee; border-radius: 10px; display: none; background: #fff; padding: 10px; }
-        .filter-item { padding: 10px; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
-        .filter-item:hover { background: #f9f9ff; }
+        /* Dict Links */
+        .dict-links { margin: 10px 0; }
+        .dict-links a { font-size: 0.85em; color: var(--main); margin-right: 12px; text-decoration: none; font-weight: 600; border-bottom: 1px solid var(--main); }
 
+        #filterResults { margin-top: 5px; max-height: 200px; overflow-y: auto; border: 1px solid #eee; border-radius: 10px; display: none; background: #fff; padding: 10px; }
         .choice-btn { width: 100%; text-align: left; padding: 14px; margin-top: 8px; border: 2px solid #f0f0f0; border-radius: 12px; background: white; cursor: pointer; font-size: 15px; }
-        .choice-btn:hover { border-color: var(--main); background: #f9f8ff; }
-        
-        .dict-links a { font-size: 0.8em; color: var(--main); margin-right: 10px; text-decoration: none; font-weight: bold; }
         #undoBar { display:none; position:fixed; bottom:20px; background:#2d3436; color:white; padding:15px 25px; border-radius:30px; z-index:3000; }
     </style>
 </head>
@@ -51,17 +50,19 @@
 
     <div id="wordSection">
         <div style="display:flex; gap:8px;">
-            <input type="text" id="wordInput" class="input-style" placeholder="Real-time filter saved words..." oninput="handleRealTimeFilter(this.value)">
+            <input type="text" id="wordInput" class="input-style" placeholder="Real-time filter saved..." oninput="realTimeFilter(this.value)">
             <button onclick="fetchApiData()" class="btn btn-main">Search New</button>
         </div>
         <div id="filterResults"></div>
 
         <div id="searchResult" style="display:none; background:#f9f9ff; padding:15px; border-radius:15px; margin-top:15px; border: 1px solid var(--main);">
             <div style="display:flex; justify-content:space-between;"><h3 id="resWord" style="margin:0;"></h3><span id="resPhonetic" style="color:var(--accent)"></span></div>
-            <div class="dict-links" id="dictLinks" style="margin:8px 0;"></div>
-            <textarea id="resMeaning" class="input-style" rows="2"></textarea>
-            <input type="text" id="resKorean" class="input-style" placeholder="Meaning in Korean">
-            <button id="saveBtn" class="btn btn-main" style="width:100%;">Save to Cloud</button>
+            
+            <div class="dict-links" id="dictLinks"></div>
+            
+            <textarea id="resMeaning" class="input-style" rows="2" placeholder="English Definition"></textarea>
+            <input type="text" id="resKorean" class="input-style" placeholder="Korean (Optional)">
+            <button id="saveBtn" class="btn btn-main" style="width:100%;">Save Word</button>
         </div>
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
@@ -75,9 +76,9 @@
     </div>
 
     <div id="phraseSection" style="display:none;">
-        <input type="text" id="phraseInput" class="input-style" placeholder="New English Phrase...">
-        <input type="text" id="phraseMeaningInput" class="input-style" placeholder="Meaning in Korean...">
-        <button onclick="savePhrase()" class="btn btn-phrase">Save Phrase</button>
+        <input type="text" id="phraseInput" class="input-style" placeholder="English Phrase">
+        <input type="text" id="phraseMeaningInput" class="input-style" placeholder="Meaning">
+        <button onclick="savePhrase()" class="btn btn-main" style="width:100%; background:var(--phrase); color:#2d3436; margin-bottom:15px;">Save Phrase</button>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
             <button onclick="startPhraseReview()" class="btn btn-sub" style="background:var(--phrase)">Phrase Review</button>
             <button onclick="openList('phrase', 'recent')" class="btn btn-sub" style="background:#dfe6e9;">View All</button>
@@ -90,15 +91,7 @@
 <div class="modal" id="commonModal"><div id="modalContent"></div></div>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyCTVfsVWULs99Tgind1z_wqbjCJPI63Esg",
-        authDomain: "my-eng-word.firebaseapp.com",
-        databaseURL: "https://my-eng-word-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "my-eng-word",
-        storageBucket: "my-eng-word.firebasestorage.app",
-        messagingSenderId: "216506701187",
-        appId: "1:216506701187:web:b814513e64777b35fc12b6"
-    };
+    const firebaseConfig = { apiKey: "AIzaSyCTVfsVWULs99Tgind1z_wqbjCJPI63Esg", authDomain: "my-eng-word.firebaseapp.com", databaseURL: "https://my-eng-word-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "my-eng-word", storageBucket: "my-eng-word.firebasestorage.app", messagingSenderId: "216506701187", appId: "1:216506701187:web:b814513e64777b35fc12b6" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     
@@ -117,15 +110,12 @@
         document.getElementById('tab-phrase').classList.toggle('active', t==='phrase');
     }
 
-    // REAL-TIME FILTER
-    function handleRealTimeFilter(val) {
+    function realTimeFilter(val) {
         const area = document.getElementById('filterResults');
         if(!val.trim()) { area.style.display = 'none'; return; }
         const matches = words.filter(w => w.word.toLowerCase().includes(val.toLowerCase()));
-        if(matches.length > 0) {
-            area.style.display = 'block';
-            area.innerHTML = matches.map(m => `<div class="filter-item" onclick="speak('${m.word}')"><b>${m.word}</b>: ${m.korean}</div>`).join('');
-        } else { area.style.display = 'none'; }
+        area.style.display = matches.length ? 'block' : 'none';
+        area.innerHTML = matches.map(m => `<div style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;" onclick="speak('${m.word}')"><b>${m.word}</b>: ${m.korean || m.meaning.substring(0,25)}...</div>`).join('');
     }
 
     async function fetchApiData() {
@@ -138,7 +128,11 @@
             document.getElementById('resWord').innerText = val;
             document.getElementById('resPhonetic').innerText = data[0].phonetic || "";
             document.getElementById('resMeaning').value = data[0].meanings[0].definitions[0].definition;
-            document.getElementById('dictLinks').innerHTML = `<a href="https://dictionary.cambridge.org/dictionary/english/${val}" target="_blank">Cambridge</a><a href="https://en.dict.naver.com/#/search?query=${val}" target="_blank">Naver</a>`;
+            
+            // MAINTAINED CAMBRIDGE & NAVER LINKS
+            document.getElementById('dictLinks').innerHTML = `
+                <a href="https://dictionary.cambridge.org/dictionary/english/${val}" target="_blank">Cambridge ↗</a>
+                <a href="https://en.dict.naver.com/#/search?query=${val}" target="_blank">Naver ↗</a>`;
             speak(val);
         }
     }
@@ -148,7 +142,6 @@
         db.ref('words/').push({ word: document.getElementById('resWord').innerText, meaning: document.getElementById('resMeaning').value, korean: document.getElementById('resKorean').value, phonetic: document.getElementById('resPhonetic').innerText, timestamp: Date.now() });
         document.getElementById('searchResult').style.display = 'none'; document.getElementById('wordInput').value = ''; document.getElementById('filterResults').style.display = 'none';
     };
-
     function savePhrase() {
         const p = document.getElementById('phraseInput').value;
         const m = document.getElementById('phraseMeaningInput').value;
@@ -160,73 +153,66 @@
     function startQuiz(type, style) {
         currentPool = type === 'today' ? words.filter(w => w.timestamp > new Date().setHours(0,0,0,0)) : words;
         if(currentPool.length === 0) return alert("No words found.");
-        currentStyle = style;
-        showModal();
-        nextWord();
+        currentStyle = style; showModal(); nextQuestion();
     }
 
-    function nextWord() {
+    function nextQuestion() {
         currentQuizWord = currentPool[Math.floor(Math.random() * currentPool.length)];
         wrongCount = 0;
         renderQuiz();
     }
 
     function renderQuiz() {
-        let content = `<h2 style="text-align:center; color:var(--main); margin-bottom:20px;">${currentQuizWord.word}</h2>`;
+        // FIX: Primary question is Meaning (English), Hint is Korean
+        const qText = currentQuizWord.meaning || "No English definition found.";
+        const hintText = currentQuizWord.korean ? `<div style="color:var(--main); margin-top:10px;">Korean Hint: ${currentQuizWord.korean}</div>` : "";
+
+        let content = `<div style="text-align:center; padding:10px;">
+                        <h3 style="color:#aaa;">Definition:</h3>
+                        <div style="font-size:1.3em; font-weight:bold;">${qText}</div>
+                        ${hintText}
+                       </div>`;
+
         if(currentStyle === 'choice') {
-            let validChoices = words.filter(w => w.korean && w.korean.trim() !== "");
-            let options = [currentQuizWord.korean];
-            while(options.length < 4 && validChoices.length >= 4) {
-                let rK = validChoices[Math.floor(Math.random()*validChoices.length)].korean;
-                if(!options.includes(rK)) options.push(rK);
+            let choices = [currentQuizWord.word];
+            while(choices.length < 4 && words.length >= 4) {
+                let rW = words[Math.floor(Math.random()*words.length)].word;
+                if(!choices.includes(rW)) choices.push(rW);
             }
-            options.sort(() => Math.random() - 0.5).forEach(opt => {
-                content += `<button class="choice-btn" onclick="checkWordAnswer('${opt}')">${opt}</button>`;
+            choices.sort(() => Math.random() - 0.5).forEach(c => {
+                content += `<button class="choice-btn" onclick="check('${c}')">${c}</button>`;
             });
         } else {
-            content = `<h2 style="text-align:center;">${currentQuizWord.korean}</h2>
-                       <input type="text" id="qInput" class="input-style" placeholder="Spelling..." autocomplete="off">
-                       <button class="btn btn-main" style="width:100%" onclick="checkWordAnswer()">Submit</button>`;
+            content += `<input type="text" id="qInput" class="input-style" placeholder="Type spelling..." autocomplete="off">
+                        <button class="btn btn-main" style="width:100%" onclick="check()">Submit</button>`;
         }
         content += `<button onclick="closeModal()" class="btn" style="width:100%; margin-top:20px; background:#eee;">Stop Quiz</button>`;
         document.getElementById('modalContent').innerHTML = content;
-        if(currentStyle === 'spell') { 
-            const input = document.getElementById('qInput'); input.focus(); 
-            input.onkeydown = e => { if(e.key==='Enter') checkWordAnswer(); };
-        }
+        if(currentStyle === 'spell') { const i = document.getElementById('qInput'); i.focus(); i.onkeydown = e => { if(e.key==='Enter') check(); }; }
     }
 
-    function checkWordAnswer(val) {
-        let isCorrect = currentStyle === 'choice' ? (val === currentQuizWord.korean) : (document.getElementById('qInput').value.trim().toLowerCase() === currentQuizWord.word.toLowerCase());
-        if(isCorrect) { speak(currentQuizWord.word); alert("Correct! 🎉"); nextWord(); } 
-        else {
+    function check(val) {
+        const ans = (val || document.getElementById('qInput').value).trim().toLowerCase();
+        if(ans === currentQuizWord.word.toLowerCase()) {
+            speak(currentQuizWord.word); alert("Correct! 🎉"); nextQuestion();
+        } else {
             wrongCount++;
-            if(wrongCount >= 2) { alert(`Answer: ${currentQuizWord.word.toUpperCase()}`); nextWord(); }
-            else { alert(`Hint: Starts with "${currentQuizWord.word.substring(0,2).toUpperCase()}"`); }
+            if(wrongCount >= 2) { alert(`The answer was: ${currentQuizWord.word.toUpperCase()}`); nextQuestion(); }
+            else { alert(`Try again! Hint: Starts with "${currentQuizWord.word[0].toUpperCase()}"`); }
         }
     }
 
-    // CONTINUOUS PHRASE REVIEW
-    function startPhraseReview() {
-        if(phrases.length === 0) return alert("No phrases saved.");
-        showModal();
-        nextPhrase();
-    }
-
+    function startPhraseReview() { if(!phrases.length) return alert("No phrases."); showModal(); nextPhrase(); }
     function nextPhrase() {
         const p = phrases[Math.floor(Math.random() * phrases.length)];
         document.getElementById('modalContent').innerHTML = `
-            <div style="text-align:center; padding:10px;">
-                <h3 style="color:#aaa;">Phrase Review</h3>
-                <h2 style="color:var(--main); font-size:24px; margin:20px 0;">${p.phrase}</h2>
-                <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin-bottom:20px;">
-                    <p style="margin:0; font-size:18px;">${p.meaning || "No Korean meaning added."}</p>
-                </div>
-                <button class="btn btn-main" style="width:100%; margin-bottom:10px;" onclick="speak('${p.phrase.replace(/'/g, "\\'")}')">Listen 🔊</button>
-                <button class="btn btn-sub" style="width:100%; background:var(--phrase);" onclick="nextPhrase()">Next Phrase ➔</button>
+            <div style="text-align:center; padding:20px;">
+                <h2 style="color:var(--main);">${p.phrase}</h2>
+                <p style="font-size:1.1em; color:#555;">${p.meaning}</p>
+                <button class="btn btn-main" style="width:100%;" onclick="speak('${p.phrase.replace(/'/g,"")}')">Listen 🔊</button>
+                <button class="btn btn-sub" style="width:100%; margin-top:10px; background:var(--phrase);" onclick="nextPhrase()">Next Random ➔</button>
                 <button onclick="closeModal()" class="btn" style="width:100%; margin-top:20px; background:#eee;">Stop Review</button>
-            </div>
-        `;
+            </div>`;
         speak(p.phrase);
     }
 
@@ -234,21 +220,34 @@
         let data = mode === 'word' ? [...words] : [...phrases];
         if(sort === 'abc') data.sort((a,b) => (a.word || a.phrase).localeCompare(b.word || b.phrase));
         else data.sort((a,b) => b.timestamp - a.timestamp);
-        let html = `<h3>${mode==='word'?'Words':'Phrases'}</h3>`;
+        
+        let html = `<div style="display:flex; justify-content:space-between; align-items:center;"><h3>Stored List</h3><button onclick="closeModal()" style="border:none; background:none; font-size:24px; cursor:pointer;">&times;</button></div>`;
         data.forEach(item => {
-            html += `<div class="item-card"><span class="delete-btn" onclick="softDelete('${mode}', '${item.id}')">🗑</span><b onclick="speak('${(item.word || item.phrase).replace(/'/g, "\\'")}')">${item.word || item.phrase} 🔊</b> <small>${item.phonetic||''}</small><br><span>${item.korean || item.meaning}</span></div>`;
+            // MAINTAINED DELETE BUTTON (🗑 icon)
+            html += `<div class="item-card">
+                        <span class="delete-btn" onclick="softDelete('${mode}', '${item.id}')">🗑</span>
+                        <b onclick="speak('${(item.word || item.phrase).replace(/'/g,"")}')">${item.word || item.phrase} 🔊</b>
+                        <br><small style="color:#777;">${item.korean || item.meaning}</small>
+                     </div>`;
         });
         document.getElementById('modalContent').innerHTML = html; showModal();
     }
 
     function softDelete(mode, id) {
         const ref = db.ref(`${mode}s/${id}`);
-        ref.once('value', snap => { lastDeleted = { mode: `${mode}s`, data: snap.val() }; ref.remove(); document.getElementById('undoBar').style.display='block'; setTimeout(() => document.getElementById('undoBar').style.display='none', 5000); });
+        ref.once('value', snap => { 
+            lastDeleted = { mode: `${mode}s`, data: snap.val() }; 
+            ref.remove(); 
+            document.getElementById('undoBar').style.display='block'; 
+            setTimeout(() => document.getElementById('undoBar').style.display='none', 5000); 
+            closeModal(); // Refresh list by closing modal
+        });
     }
 
     function undoDelete() { if(lastDeleted) { db.ref(lastDeleted.mode).push(lastDeleted.data); lastDeleted = null; document.getElementById('undoBar').style.display='none'; } }
     function showModal() { document.getElementById('commonModal').style.display='block'; document.getElementById('overlayBg').style.display='block'; }
     function closeModal() { document.getElementById('commonModal').style.display='none'; document.getElementById('overlayBg').style.display='none'; }
+    function savePhrase() { const p = document.getElementById('phraseInput').value; const m = document.getElementById('phraseMeaningInput').value; if(p) db.ref('phrases/').push({ phrase: p, meaning: m, timestamp: Date.now() }); document.getElementById('phraseInput').value=''; document.getElementById('phraseMeaningInput').value=''; }
 </script>
 </body>
 </html>
