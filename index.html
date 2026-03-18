@@ -3,27 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voca & Phrase Cloud v3.2 - Real-time Filter</title>
+    <title>Voca Cloud v3.3 - Fixed UI & Loop</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
         :root { --main: #6c5ce7; --bg: #f0f2f5; --card: #ffffff; --text: #2d3436; --accent: #00b894; --warn: #d63031; --phrase: #fdcb6e; }
         body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 550px; background: var(--card); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-        .tab-menu { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        .tab { cursor: pointer; font-weight: bold; color: #aaa; padding: 5px 10px; }
+        
+        /* Fixed Tab Styling */
+        .tab-menu { display: flex; gap: 15px; margin-bottom: 20px; border-bottom: 2px solid #eee; }
+        .tab { cursor: pointer; font-weight: bold; color: #aaa; padding: 10px 5px; transition: 0.3s; }
         .tab.active { color: var(--main); border-bottom: 3px solid var(--main); }
-        .input-style { padding: 12px 15px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
+
+        .input-style { padding: 12px 15px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; width: 100%; box-sizing: border-box; margin-bottom: 10px; outline: none; }
+        .input-style:focus { border-color: var(--main); }
         .btn { padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; }
         .btn-main { background: var(--main); color: white; }
         .btn-today { background: #ff7675; color: white; }
         .btn-sub { background: #81ecec; color: #2d3436; }
+        .btn-phrase { background: var(--phrase); color: #2d3436; }
+
         .modal { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:25px; border-radius:20px; width:90%; max-width:480px; height: 85vh; overflow-y: auto; z-index:2000; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
         .overlay-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1500; }
         .item-card { background: #f8f9fa; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #efefef; position: relative; }
         .delete-btn { position: absolute; right: 10px; top: 10px; color: #ccc; cursor: pointer; }
-        #filterResults { margin-top: 15px; max-height: 200px; overflow-y: auto; border-top: 1px solid #eee; padding-top: 10px; }
-        .dict-links a { font-size: 0.8em; color: var(--main); margin-right: 10px; text-decoration: none; }
+        
+        #filterResults { margin-top: 5px; max-height: 250px; overflow-y: auto; border: 1px solid #eee; border-radius: 10px; display: none; background: #fff; padding: 10px; }
+        .filter-item { padding: 8px; border-bottom: 1px solid #f0f0f0; cursor: pointer; font-size: 0.9em; }
+        .filter-item:hover { background: #f9f9ff; }
+        
+        .dict-links a { font-size: 0.8em; color: var(--main); margin-right: 10px; text-decoration: none; font-weight: bold; }
         #undoBar { display:none; position:fixed; bottom:20px; background:#2d3436; color:white; padding:15px 25px; border-radius:30px; z-index:3000; }
     </style>
 </head>
@@ -31,24 +41,24 @@
 
 <div class="container">
     <div class="tab-menu">
-        <div class="tab active" onclick="switchTab('word')">Word Mode</div>
-        <div class="tab" onclick="switchTab('phrase')">Phrase Mode</div>
+        <div class="tab active" id="tab-word" onclick="switchTab('word')">Word Mode</div>
+        <div class="tab" id="tab-phrase" onclick="switchTab('phrase')">Phrase Mode</div>
     </div>
 
     <div id="wordSection">
         <div style="display:flex; gap:8px;">
-            <input type="text" id="wordInput" class="input-style" placeholder="Search saved words / Type new word..." oninput="filterStoredWords(this.value)">
+            <input type="text" id="wordInput" class="input-style" placeholder="Filter list / Type new..." oninput="realTimeFilter(this.value)">
             <button onclick="fetchApiData()" class="btn btn-main">Search</button>
         </div>
         
-        <div id="filterResults" style="display:none;"></div>
+        <div id="filterResults"></div>
 
-        <div id="searchResult" style="display:none; background:#f9f9ff; padding:15px; border-radius:15px; margin-top:15px;">
+        <div id="searchResult" style="display:none; background:#f9f9ff; padding:15px; border-radius:15px; margin-top:15px; border: 1px solid var(--main);">
             <div style="display:flex; justify-content:space-between;"><h3 id="resWord" style="margin:0;"></h3><span id="resPhonetic" style="color:var(--accent)"></span></div>
-            <div class="dict-links" id="dictLinks" style="margin:5px 0;"></div>
-            <textarea id="resMeaning" class="input-style" rows="2"></textarea>
+            <div class="dict-links" id="dictLinks" style="margin:8px 0;"></div>
+            <textarea id="resMeaning" class="input-style" rows="2" placeholder="English Definition"></textarea>
             <input type="text" id="resKorean" class="input-style" placeholder="Korean Meaning">
-            <button id="saveBtn" class="btn btn-main" style="width:100%;">Save Word</button>
+            <button id="saveBtn" class="btn btn-main" style="width:100%;">Save to Cloud</button>
         </div>
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
@@ -63,7 +73,7 @@
 
     <div id="phraseSection" style="display:none;">
         <input type="text" id="phraseInput" class="input-style" placeholder="English Phrase">
-        <input type="text" id="phraseMeaning" class="input-style" placeholder="Korean Meaning">
+        <input type="text" id="phraseMeaningInput" class="input-style" placeholder="Korean Meaning">
         <button onclick="savePhrase()" class="btn btn-phrase" style="width:100%; margin-bottom:15px;">Save Phrase</button>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
             <button onclick="startPhraseReview()" class="btn btn-phrase">Random Review</button>
@@ -74,7 +84,10 @@
 
 <div id="undoBar">Deleted. <span onclick="undoDelete()" style="text-decoration:underline; cursor:pointer; margin-left:10px; color:var(--phrase);">UNDO</span></div>
 <div class="overlay-bg" id="overlayBg" onclick="closeModal()"></div>
-<div class="modal" id="commonModal"><button style="position:absolute;right:15px;top:15px;border:none;background:none;font-size:20px;" onclick="closeModal()">&times;</button><div id="modalContent"></div></div>
+<div class="modal" id="commonModal">
+    <button style="position:absolute;right:15px;top:15px;border:none;background:none;font-size:20px;cursor:pointer;" onclick="closeModal()">&times;</button>
+    <div id="modalContent"></div>
+</div>
 
 <script>
     const firebaseConfig = {
@@ -89,28 +102,36 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     
-    let words = [], phrases = [], lastDeleted = null, currentQuizWord = null, wrongCount = 0;
+    let words = [], phrases = [], lastDeleted = null;
+    let currentQuizWord = null, wrongCount = 0, currentPool = [], currentStyle = '';
 
     db.ref('words/').on('value', snap => { const val = snap.val(); words = val ? Object.keys(val).map(k => ({id:k, ...val[k]})) : []; });
     db.ref('phrases/').on('value', snap => { const val = snap.val(); phrases = val ? Object.keys(val).map(k => ({id:k, ...val[k]})) : []; });
 
     function speak(t) { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang='en-US'; window.speechSynthesis.speak(u); }
-    function switchTab(t) { document.getElementById('wordSection').style.display = t==='word'?'block':'none'; document.getElementById('phraseSection').style.display = t==='phrase'?'block':'none'; }
 
-    // REAL-TIME FILTER (Searching your own list)
-    function filterStoredWords(val) {
+    // #2 Fix: Tab Highlighting
+    function switchTab(t) {
+        document.getElementById('wordSection').style.display = t==='word'?'block':'none';
+        document.getElementById('phraseSection').style.display = t==='phrase'?'block':'none';
+        document.getElementById('tab-word').classList.toggle('active', t==='word');
+        document.getElementById('tab-phrase').classList.toggle('active', t==='phrase');
+    }
+
+    // #3 Fix: Real-time Filter (Searching your stored list)
+    function realTimeFilter(val) {
         const area = document.getElementById('filterResults');
         if(!val.trim()) { area.style.display = 'none'; return; }
         const matches = words.filter(w => w.word.toLowerCase().includes(val.toLowerCase()));
         if(matches.length > 0) {
             area.style.display = 'block';
-            area.innerHTML = matches.map(m => `<div class="item-card" onclick="speak('${m.word}')"><b>${m.word}</b>: ${m.korean}</div>`).join('');
+            area.innerHTML = matches.map(m => `<div class="filter-item" onclick="speak('${m.word}')"><b>${m.word}</b>: ${m.korean}</div>`).join('');
         } else { area.style.display = 'none'; }
     }
 
-    // API SEARCH (Manual fetch for new words)
     async function fetchApiData() {
         const val = document.getElementById('wordInput').value.trim();
+        if(!val) return;
         const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${val}`);
         const data = await res.json();
         if(!data.title) {
@@ -124,7 +145,6 @@
             speak(val);
         }
     }
-
     document.getElementById('wordInput').addEventListener('keydown', e => { if(e.key==='Enter') fetchApiData(); });
 
     document.getElementById('saveBtn').onclick = () => {
@@ -132,46 +152,91 @@
         document.getElementById('searchResult').style.display = 'none'; document.getElementById('wordInput').value = ''; document.getElementById('filterResults').style.display = 'none';
     };
 
-    function startQuiz(type, style) {
-        let pool = type === 'today' ? words.filter(w => w.timestamp > new Date().setHours(0,0,0,0)) : words;
-        if(pool.length === 0) return alert("No words found.");
-        wrongCount = 0; renderQuiz(pool, style); showModal();
+    function savePhrase() {
+        const p = document.getElementById('phraseInput').value;
+        const m = document.getElementById('phraseMeaningInput').value;
+        if(p) db.ref('phrases/').push({ phrase: p, meaning: m, timestamp: Date.now() });
+        document.getElementById('phraseInput').value = ''; document.getElementById('phraseMeaningInput').value = '';
     }
 
-    function renderQuiz(pool, style) {
-        currentQuizWord = pool[Math.floor(Math.random() * pool.length)];
-        let content = `<h2 style="text-align:center;">${currentQuizWord.word}</h2>`;
-        if(style === 'choice') {
+    // #1 Fix: Continuous Quiz Loop
+    function startQuiz(type, style) {
+        currentPool = type === 'today' ? words.filter(w => w.timestamp > new Date().setHours(0,0,0,0)) : words;
+        if(currentPool.length === 0) return alert("No words found.");
+        currentStyle = style;
+        wrongCount = 0;
+        showModal();
+        nextQuestion();
+    }
+
+    function nextQuestion() {
+        currentQuizWord = currentPool[Math.floor(Math.random() * currentPool.length)];
+        wrongCount = 0;
+        renderQuizContent();
+    }
+
+    function renderQuizContent() {
+        let content = `<h2 style="text-align:center; color:var(--main);">${currentQuizWord.word}</h2>`;
+        if(currentStyle === 'choice') {
             let options = [currentQuizWord.korean];
             while(options.length < 4 && words.length >= 4) {
                 let rK = words[Math.floor(Math.random()*words.length)].korean;
                 if(!options.includes(rK)) options.push(rK);
             }
             options.sort(() => Math.random() - 0.5).forEach(opt => {
-                content += `<button style="width:100%; text-align:left; padding:12px; margin-top:5px; border:1px solid #ddd; border-radius:8px; background:white; cursor:pointer;" onclick="checkAnswer('${opt}', 'choice')">${opt}</button>`;
+                content += `<button class="choice-btn" style="width:100%; text-align:left; padding:12px; margin-top:5px; border:1px solid #ddd; border-radius:8px; background:white; cursor:pointer;" onclick="checkAnswer('${opt}')">${opt}</button>`;
             });
         } else {
-            content = `<h2 style="text-align:center;">${currentQuizWord.korean}</h2><input type="text" id="qInput" class="input-style" placeholder="Spelling..." autocomplete="off"><button class="btn btn-main" style="width:100%" onclick="checkAnswer(null, 'spell')">Submit</button>`;
+            content = `<h2 style="text-align:center;">${currentQuizWord.korean}</h2>
+                       <input type="text" id="qInput" class="input-style" placeholder="Type answer..." autocomplete="off">
+                       <button class="btn btn-main" style="width:100%" onclick="checkAnswer()">Submit</button>`;
         }
         document.getElementById('modalContent').innerHTML = content;
-        if(style === 'spell') { document.getElementById('qInput').focus(); document.getElementById('qInput').onkeydown = e => { if(e.key==='Enter') checkAnswer(null, 'spell'); }; }
+        if(currentStyle === 'spell') { 
+            const input = document.getElementById('qInput');
+            input.focus(); 
+            input.onkeydown = e => { if(e.key==='Enter') checkAnswer(); }; 
+        }
     }
 
-    function checkAnswer(val, style) {
-        let isCorrect = style === 'choice' ? (val === currentQuizWord.korean) : (document.getElementById('qInput').value.trim().toLowerCase() === currentQuizWord.word.toLowerCase());
-        if(isCorrect) { speak(currentQuizWord.word); alert("Correct! 🎉"); closeModal(); } 
-        else {
+    function checkAnswer(val) {
+        let isCorrect = currentStyle === 'choice' ? (val === currentQuizWord.korean) : (document.getElementById('qInput').value.trim().toLowerCase() === currentQuizWord.word.toLowerCase());
+        if(isCorrect) {
+            speak(currentQuizWord.word);
+            alert("Correct! 🎉");
+            nextQuestion(); // Fixed: Loops to next question automatically
+        } else {
             wrongCount++;
-            if(wrongCount >= 2) { alert(`Answer: ${currentQuizWord.word.toUpperCase()}`); closeModal(); }
-            else { alert(`Hint: Starts with "${currentQuizWord.word.substring(0,2).toUpperCase()}"`); }
+            if(wrongCount >= 2) {
+                alert(`The answer was: ${currentQuizWord.word.toUpperCase()}`);
+                nextQuestion();
+            } else {
+                alert(`Wrong! Hint: Starts with "${currentQuizWord.word.substring(0,2).toUpperCase()}"`);
+            }
         }
+    }
+
+    function startPhraseReview() {
+        if(phrases.length === 0) return alert("No phrases saved.");
+        showModal();
+        nextPhrase();
+    }
+    function nextPhrase() {
+        const p = phrases[Math.floor(Math.random() * phrases.length)];
+        document.getElementById('modalContent').innerHTML = `
+            <div style="text-align:center; padding:20px;">
+                <h2 style="color:var(--phrase);">${p.phrase}</h2>
+                <p>${p.meaning}</p>
+                <button class="btn btn-phrase" onclick="nextPhrase()">Next Random 🔀</button>
+            </div>`;
+        speak(p.phrase);
     }
 
     function openList(mode, sort) {
         let data = mode === 'word' ? [...words] : [...phrases];
         if(sort === 'abc') data.sort((a,b) => (a.word || a.phrase).localeCompare(b.word || b.phrase));
         else data.sort((a,b) => b.timestamp - a.timestamp);
-        let html = `<h3>Stored List</h3>`;
+        let html = `<h3>${mode === 'word' ? 'Stored Words' : 'Stored Phrases'}</h3>`;
         data.forEach(item => {
             html += `<div class="item-card"><span class="delete-btn" onclick="softDelete('${mode}', '${item.id}')">🗑</span><b onclick="speak('${item.word || item.phrase}')">${item.word || item.phrase} 🔊</b> <small>${item.phonetic||''}</small><br><span>${item.korean || item.meaning}</span></div>`;
         });
