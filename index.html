@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voca & Phrase Cloud v4.1</title>
+    <title>Voca & Phrase Cloud v4.2</title>
     <style>
         :root { --main: #6c5ce7; --bg: #f0f2f5; --card: #ffffff; --text: #2d3436; --accent: #00b894; --warn: #d63031; --phrase: #fdcb6e; --sentence: #a29bfe; --pattern: #55efc4; }
         body { font-family: 'Pretendard', 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
@@ -381,6 +381,7 @@ document.head.appendChild(s1);
 //  UTILITIES
 // ══════════════════════════════════════════════════════
 function speak(t) { window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t); u.lang='en-US'; window.speechSynthesis.speak(u); }
+function speakPattern(t) { const clean=t.replace(/_{2,}/g, 'blank'); speak(clean); }
 function esc(s) { return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 function flashBtn(btn, msg) { const o=btn.textContent; btn.textContent=msg; btn.disabled=true; btn.style.opacity='1'; setTimeout(()=>{ btn.textContent=o; btn.disabled=false; },1600); }
 
@@ -665,13 +666,13 @@ function renderPatternCard(){
             <div style="font-size:1.2em;font-weight:700;line-height:1.7;">${p.text}</div>
             ${p.note?`<div style="font-size:0.88em;color:#777;margin-top:10px;font-style:italic;">📌 ${p.note}</div>`:''}
         </div>
-        <button class="btn btn-pat" style="width:100%;margin-bottom:10px;" onclick="speak('${esc(p.text)}')">🔊 Listen</button>
+        <button class="btn btn-pat" style="width:100%;margin-bottom:10px;" onclick="speakPattern('${esc(p.text)}')">🔊 Listen</button>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <button class="btn btn-sub" onclick="prevPatternCard()">← Prev</button>
             <button class="btn btn-pat" onclick="nextPatternCard()">Next →</button>
         </div>
         <button onclick="closeModal()" class="btn" style="width:100%;margin-top:15px;background:#eee;color:#777;">Close</button>`;
-    speak(p.text);
+    speakPattern(p.text);
 }
 function setPatFilter(cat){ patFilter=cat; patIndex=0; renderPatternCard(); }
 function nextPatternCard(){ patIndex++; renderPatternCard(); }
