@@ -3,11 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voca & Phrase Cloud v4.2</title>
+    <title>Voca & Phrase Cloud v4.3</title>
     <style>
         :root { --main: #6c5ce7; --bg: #f0f2f5; --card: #ffffff; --text: #2d3436; --accent: #00b894; --warn: #d63031; --phrase: #fdcb6e; --sentence: #a29bfe; --pattern: #55efc4; }
+
+        /* ── USER SELECT SCREEN ── */
+        #userSelectScreen {
+            position: fixed; inset: 0; background: var(--bg);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 9999; padding: 30px;
+        }
+        #userSelectScreen h1 { font-size: 1.6em; color: var(--main); margin-bottom: 6px; text-align: center; }
+        #userSelectScreen p  { color: #aaa; margin-bottom: 30px; font-size: 0.95em; text-align: center; }
+        .user-cards { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+        .user-card {
+            background: white; border: 3px solid #eee; border-radius: 20px;
+            padding: 28px 32px; text-align: center; cursor: pointer;
+            transition: 0.2s; min-width: 130px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+        }
+        .user-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
+        .user-card.kitae:hover { border-color: #6c5ce7; }
+        .user-card.eunju:hover { border-color: #e84393; }
+        .user-card .uc-emoji { font-size: 3em; margin-bottom: 10px; }
+        .user-card .uc-name  { font-size: 1.2em; font-weight: 800; }
+        .user-card.kitae .uc-name { color: #6c5ce7; }
+        .user-card.eunju .uc-name { color: #e84393; }
+        .user-card .uc-sub   { font-size: 0.78em; color: #aaa; margin-top: 4px; }
+
+        /* ── MAIN APP ── */
         body { font-family: 'Pretendard', 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 550px; background: var(--card); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+
+        /* ── USER BADGE ── */
+        .user-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 10px 4px 6px; border-radius: 20px;
+            font-size: 0.8em; font-weight: 700; margin-left: 8px;
+            cursor: pointer; border: 2px solid transparent;
+            transition: 0.2s; vertical-align: middle;
+        }
+        .user-badge.kitae { background: #f0eeff; color: #6c5ce7; border-color: #d5ccff; }
+        .user-badge.eunju { background: #fff0f7; color: #e84393; border-color: #ffd0ea; }
+        .user-badge:hover { opacity: 0.8; }
+        .user-badge .badge-emoji { font-size: 1.1em; }
 
         .tab-menu { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #eee; flex-wrap: wrap; }
         .tab { cursor: pointer; font-weight: bold; color: #aaa; padding: 10px 4px; font-size: 13px; white-space: nowrap; }
@@ -26,68 +66,32 @@
 
         .field-label { font-size: 0.75em; font-weight: 700; letter-spacing: 1px; color: #aaa; margin-bottom: 4px; text-transform: uppercase; }
 
-        /* ── MODE TOGGLE ── */
         .mode-toggle { display: flex; background: #f0f2f5; border-radius: 10px; padding: 4px; margin-bottom: 16px; gap: 4px; }
         .mode-btn { flex: 1; padding: 8px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; background: transparent; color: #aaa; transition: 0.2s; font-family: inherit; }
         .mode-btn.active { background: white; color: var(--main); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 
-        /* ── QUICK PASTE BOX ── */
-        .quick-box {
-            background: #fafafa;
-            border: 2px dashed #d1c4e9;
-            border-radius: 14px;
-            padding: 16px;
-            margin-bottom: 12px;
-            transition: border-color 0.2s;
-        }
+        .quick-box { background: #fafafa; border: 2px dashed #d1c4e9; border-radius: 14px; padding: 16px; margin-bottom: 12px; transition: border-color 0.2s; }
         .quick-box:focus-within { border-color: var(--sentence); }
-        .quick-box textarea {
-            width: 100%; box-sizing: border-box;
-            border: none; background: transparent;
-            font-size: 14px; font-family: inherit;
-            resize: none; outline: none;
-            line-height: 1.7;
-            min-height: 130px;
-            color: var(--text);
-        }
+        .quick-box textarea { width: 100%; box-sizing: border-box; border: none; background: transparent; font-size: 14px; font-family: inherit; resize: none; outline: none; line-height: 1.7; min-height: 130px; color: var(--text); }
         .quick-hint { font-size: 0.78em; color: #b2bec3; margin-top: 6px; line-height: 1.5; }
 
-        /* ── LIVE PREVIEW STRIPS ── */
         .preview-strip { border-radius: 12px; overflow: hidden; margin-bottom: 12px; border: 1px solid #efefef; animation: fadeIn 0.25s ease; }
         @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
         .preview-row { padding: 10px 14px; font-size: 0.92em; line-height: 1.6; }
         .preview-row .lbl { font-size: 0.7em; font-weight: 700; letter-spacing: 1px; display: block; margin-bottom: 2px; text-transform: uppercase; }
-        .row-original { background: #f5f3ff; }
-        .row-original .lbl { color: var(--sentence); }
-        .row-casual   { background: #f0fdf8; border-top: 1px solid #e8f8f5; }
-        .row-casual   .lbl { color: var(--accent); }
-        .row-formal   { background: #eff6ff; border-top: 1px solid #dbeafe; }
-        .row-formal   .lbl { color: #0984e3; }
+        .row-original { background: #f5f3ff; } .row-original .lbl { color: var(--sentence); }
+        .row-casual   { background: #f0fdf8; border-top: 1px solid #e8f8f5; } .row-casual .lbl { color: var(--accent); }
+        .row-formal   { background: #eff6ff; border-top: 1px solid #dbeafe; } .row-formal .lbl { color: #0984e3; }
         .preview-empty { color: #ccc; font-style: italic; }
 
-        /* ── PATTERN QUICK PASTE ── */
-        .pat-quick-box {
-            background: #f0fdf8;
-            border: 2px dashed #b2dfdb;
-            border-radius: 14px;
-            padding: 16px;
-            margin-bottom: 12px;
-        }
+        .pat-quick-box { background: #f0fdf8; border: 2px dashed #b2dfdb; border-radius: 14px; padding: 16px; margin-bottom: 12px; }
         .pat-quick-box:focus-within { border-color: var(--pattern); }
-        .pat-quick-box textarea {
-            width: 100%; box-sizing: border-box;
-            border: none; background: transparent;
-            font-size: 14px; font-family: inherit;
-            resize: none; outline: none;
-            line-height: 1.8; min-height: 100px;
-            color: var(--text);
-        }
+        .pat-quick-box textarea { width: 100%; box-sizing: border-box; border: none; background: transparent; font-size: 14px; font-family: inherit; resize: none; outline: none; line-height: 1.8; min-height: 100px; color: var(--text); }
         .pat-preview-item { background: white; border: 1px solid #b2dfdb; border-radius: 10px; padding: 10px 14px; margin-bottom: 7px; animation: fadeIn 0.2s ease; }
         .pat-preview-item .pc { font-size: 0.72em; font-weight: 700; letter-spacing: 1px; color: #00b894; display: block; margin-bottom: 3px; text-transform: uppercase; }
         .pat-preview-item .pt { font-size: 0.95em; font-weight: 600; }
         .pat-preview-item .pn { font-size: 0.82em; color: #888; margin-top: 3px; }
 
-        /* ── MODAL ── */
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: white; border-radius: 20px; width: 90%; max-width: 480px; height: 85vh; overflow: hidden; z-index: 2000; box-shadow: 0 20px 50px rgba(0,0,0,0.3); flex-direction: column; }
         .modal.open { display: flex; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 25px 14px; border-bottom: 2px solid #f0f0f0; flex-shrink: 0; background: white; }
@@ -125,7 +129,7 @@
 
         .pat-card { background: #f0fdf8; border: 1px solid #b2dfdb; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; position: relative; }
         .pat-card .pat-category { display: inline-block; font-size: 0.72em; font-weight: 700; letter-spacing: 1px; background: var(--pattern); color: #2d3436; padding: 2px 8px; border-radius: 20px; margin-bottom: 6px; text-transform: uppercase; }
-        .pat-card .pat-text { font-size: 1em; font-weight: 600; color: var(--text); }
+        .pat-card .pat-text { font-size: 1em; font-weight: 600; }
         .pat-card .pat-note { font-size: 0.85em; color: #777; margin-top: 4px; }
 
         .flashcard { background: #f5f3ff; border-radius: 16px; padding: 22px; text-align: center; margin-bottom: 15px; }
@@ -137,24 +141,45 @@
         .reveal-box .rev-text  { font-size: 1em; line-height: 1.6; }
 
         #undoBar { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #2d3436; color: white; padding: 15px 25px; border-radius: 30px; z-index: 3000; white-space: nowrap; }
-        .sync-badge { font-size: 0.7em; padding: 3px 8px; border-radius: 20px; background: #dfe6e9; color: #636e72; margin-left: 8px; vertical-align: middle; }
+        .sync-badge { font-size: 0.7em; padding: 3px 8px; border-radius: 20px; background: #dfe6e9; color: #636e72; margin-left: 6px; vertical-align: middle; }
         .sync-badge.live { background: #d4efdf; color: #1e8449; }
         .empty-msg { text-align: center; color: #aaa; padding: 40px 0; }
         .pill-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
         .pill { padding: 5px 13px; border-radius: 20px; border: 2px solid #eee; background: white; cursor: pointer; font-size: 12px; font-weight: 600; transition: 0.15s; }
         .pill.active { background: var(--pattern); border-color: var(--pattern); color: #2d3436; }
-
-        /* ── SAVE SUCCESS FLASH ── */
-        .save-flash { text-align: center; padding: 18px; background: #e8f8f5; border-radius: 14px; margin-bottom: 12px; animation: fadeIn 0.2s ease; }
-        .save-flash .sf-icon { font-size: 2em; }
-        .save-flash .sf-msg  { font-weight: 700; color: var(--accent); margin-top: 4px; }
     </style>
 </head>
 <body>
-<div class="container">
-    <div style="display:flex; align-items:center; margin-bottom:8px;">
+
+<!-- ══ USER SELECT SCREEN ══ -->
+<div id="userSelectScreen">
+    <h1>📖 Voca Cloud</h1>
+    <p>Who's studying today?</p>
+    <div class="user-cards">
+        <div class="user-card kitae" onclick="selectUser('kitae')">
+            <div class="uc-emoji">👨</div>
+            <div class="uc-name">Kitae</div>
+            <div class="uc-sub">Original user</div>
+        </div>
+        <div class="user-card eunju" onclick="selectUser('eunju')">
+            <div class="uc-emoji">👩</div>
+            <div class="uc-name">Eunju</div>
+            <div class="uc-sub">New learner</div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div class="container" id="appContainer" style="display:none;">
+    <div style="display:flex; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:4px;">
         <span style="font-size:1.3em; font-weight:800; color:var(--main);">Voca Cloud</span>
         <span class="sync-badge" id="syncBadge">localStorage</span>
+        <!-- User badge — click to switch user -->
+        <span class="user-badge" id="userBadge" onclick="switchUser()" title="Switch user">
+            <span class="badge-emoji" id="badgeEmoji"></span>
+            <span id="badgeName"></span>
+            <span style="font-size:0.85em; opacity:0.6;">↩</span>
+        </span>
     </div>
 
     <div class="tab-menu">
@@ -204,14 +229,10 @@
 
     <!-- ══ SENTENCE ══ -->
     <div id="sentenceSection" style="display:none;">
-
-        <!-- Mode toggle -->
         <div class="mode-toggle">
             <button class="mode-btn active" id="sent-mode-quick"  onclick="setSentMode('quick')">⚡ Quick Paste</button>
             <button class="mode-btn"        id="sent-mode-manual" onclick="setSentMode('manual')">✏️ Manual</button>
         </div>
-
-        <!-- ── QUICK PASTE MODE ── -->
         <div id="sentQuickPane">
             <div class="quick-box">
                 <textarea id="sentQuickInput"
@@ -224,33 +245,23 @@ So far, I've only managed to add a word section
 ---
 To date, I have implemented two core sections"
                     oninput="parseSentenceQuick(this.value)"></textarea>
-                <div class="quick-hint">
-                    📋 Format: <b>Original → --- → Casual → --- → Formal</b><br>
-                    This is the exact format Claude uses in wrap-up summaries.
-                </div>
+                <div class="quick-hint">📋 Format: <b>Original → --- → Casual → --- → Formal</b></div>
             </div>
-
-            <!-- Live preview -->
             <div id="sentQuickPreview"></div>
-
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <button onclick="saveSentenceQuick()" class="btn btn-sent" id="sentQuickSaveBtn" disabled
-                    style="opacity:0.5;">💾 Save</button>
-                <button onclick="clearSentQuick()" class="btn" style="background:#eee; color:#777;">🗑 Clear</button>
+                <button onclick="saveSentenceQuick()" class="btn btn-sent" id="sentQuickSaveBtn" disabled style="opacity:0.5;">💾 Save</button>
+                <button onclick="clearSentQuick()"    class="btn" style="background:#eee; color:#777;">🗑 Clear</button>
             </div>
         </div>
-
-        <!-- ── MANUAL MODE ── -->
         <div id="sentManualPane" style="display:none;">
             <div class="field-label">🔴 Your Original</div>
-            <textarea id="sentOriginal" class="input-style" rows="2" placeholder="e.g. I could make only word version and phrase version"></textarea>
+            <textarea id="sentOriginal" class="input-style" rows="2" placeholder="Your original sentence"></textarea>
             <div class="field-label">💬 Casual Version</div>
-            <textarea id="sentCasual"   class="input-style" rows="2" placeholder="e.g. So far, I've only managed to add a word section and a phrase section"></textarea>
+            <textarea id="sentCasual"   class="input-style" rows="2" placeholder="Casual correction"></textarea>
             <div class="field-label">💼 Formal Version</div>
-            <textarea id="sentFormal"   class="input-style" rows="2" placeholder="e.g. To date, I have implemented two core sections"></textarea>
+            <textarea id="sentFormal"   class="input-style" rows="2" placeholder="Formal correction"></textarea>
             <button onclick="saveSentenceManual()" class="btn btn-sent" style="width:100%; margin-bottom:15px;" id="sentManualSaveBtn">Save Sentence Set</button>
         </div>
-
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
             <button onclick="startSentenceReview()" class="btn btn-sent">🔁 Flashcard Review</button>
             <button onclick="openSentenceList()"    class="btn btn-sub" style="background:#e8e4ff; color:var(--main);">📋 View All</button>
@@ -259,25 +270,20 @@ To date, I have implemented two core sections"
 
     <!-- ══ PATTERN ══ -->
     <div id="patternSection" style="display:none;">
-
         <div class="mode-toggle">
             <button class="mode-btn active" id="pat-mode-quick"  onclick="setPatMode('quick')">⚡ Quick Paste</button>
             <button class="mode-btn"        id="pat-mode-manual" onclick="setPatMode('manual')">✏️ Manual</button>
         </div>
-
-        <!-- ── PATTERN QUICK PASTE ── -->
         <div id="patQuickPane">
             <div class="pat-quick-box">
                 <textarea id="patQuickInput"
-                    placeholder='Paste one or more patterns — one per line.
-Format:  expression | category | note (optional)
+                    placeholder='One pattern per line: expression | category | note
 
 Example:
 I would appreciate it if you could ___ | Polite Request | Use in formal emails
-Just a heads-up — ___ | Casual Chat | Friendly informal warning
-To whom it may concern, ___ | Business Email | Letter opening'
+Just a heads-up — ___ | Casual Chat | Friendly warning'
                     oninput="parsePatternQuick(this.value)"></textarea>
-                <div class="quick-hint">📋 Separate fields with <b>|</b> &nbsp;·&nbsp; One pattern per line &nbsp;·&nbsp; Paste multiple at once!</div>
+                <div class="quick-hint">📋 Separate with <b>|</b> · One pattern per line · Paste multiple at once!</div>
             </div>
             <div id="patQuickPreview"></div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
@@ -285,18 +291,15 @@ To whom it may concern, ___ | Business Email | Letter opening'
                 <button onclick="clearPatQuick()"    class="btn" style="background:#eee; color:#777;">🗑 Clear</button>
             </div>
         </div>
-
-        <!-- ── PATTERN MANUAL ── -->
         <div id="patManualPane" style="display:none;">
             <div class="field-label">🃏 Expression Pattern</div>
             <textarea id="patText"     class="input-style" rows="2" placeholder='e.g. "I would appreciate it if you could ___"'></textarea>
             <div class="field-label">🏷️ Category</div>
-            <input type="text" id="patCategory" class="input-style" placeholder="e.g. Polite Request / Business Email / Casual Chat">
+            <input type="text" id="patCategory" class="input-style" placeholder="e.g. Polite Request / Business Email">
             <div class="field-label">📌 Note (Optional)</div>
             <input type="text" id="patNote"     class="input-style" placeholder="When or how to use this expression">
             <button onclick="savePatternManual()" class="btn btn-pat" style="width:100%; margin-bottom:15px;">Save Pattern</button>
         </div>
-
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
             <button onclick="startPatternReview()" class="btn btn-pat">🔁 Browse Cards</button>
             <button onclick="openPatternList()"    class="btn btn-sub" style="background:#d4f5ec; color:#1e8449;">📋 View All</button>
@@ -316,72 +319,138 @@ To whom it may concern, ___ | Business Email | Letter opening'
 
 <script>
 // ══════════════════════════════════════════════════════
-//  DATA LAYER
+//  USER SYSTEM
+// ══════════════════════════════════════════════════════
+const USERS = {
+    kitae: { name: 'Kitae', emoji: '👨', color: '#6c5ce7',
+             // Kitae keeps the original root paths — all existing data is safe
+             paths: { words:'words/', phrases:'phrases/', sentences:'sentences/', patterns:'patterns/' },
+             lsPrefix: 'kitae' },
+    eunju: { name: 'Eunju', emoji: '👩', color: '#e84393',
+             // Eunju gets her own separate Firebase paths
+             paths: { words:'eunju/words/', phrases:'eunju/phrases/', sentences:'eunju/sentences/', patterns:'eunju/patterns/' },
+             lsPrefix: 'eunju' }
+};
+
+let currentUser = null;  // set by selectUser()
+
+function selectUser(userId) {
+    currentUser = userId;
+    localStorage.setItem('voca_last_user', userId);
+
+    // Update badge
+    const u = USERS[userId];
+    document.getElementById('badgeEmoji').textContent = u.emoji;
+    document.getElementById('badgeName').textContent  = u.name;
+    document.getElementById('userBadge').className    = `user-badge ${userId}`;
+
+    // Show app, hide user select
+    document.getElementById('userSelectScreen').style.display = 'none';
+    document.getElementById('appContainer').style.display     = 'block';
+
+    // Reset data arrays and reload for this user
+    words=[]; phrases=[]; sentences=[]; patterns=[];
+    loadLocal();
+    if (window._db) bindFirebase();  // re-bind Firebase listeners for this user
+    else tryInitFirebase();          // first time — init Firebase
+}
+
+function switchUser() {
+    // Detach any Firebase listeners before switching
+    if (window._db) {
+        const prev = USERS[currentUser];
+        Object.values(prev.paths).forEach(p => window._db.ref(p).off());
+    }
+    words=[]; phrases=[]; sentences=[]; patterns=[];
+    document.getElementById('appContainer').style.display     = 'none';
+    document.getElementById('userSelectScreen').style.display = 'flex';
+}
+
+// Auto-login if user was remembered
+window.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('voca_last_user');
+    if (saved && USERS[saved]) selectUser(saved);
+});
+
+// ══════════════════════════════════════════════════════
+//  DATA LAYER — localStorage + Firebase, per user
 // ══════════════════════════════════════════════════════
 let words=[], phrases=[], sentences=[], patterns=[], lastDeleted=null;
 
+function lsKey(type) {
+    return `voca_${type}_${USERS[currentUser].lsPrefix}`;
+}
 function loadLocal() {
     const p = k => { try { return JSON.parse(localStorage.getItem(k))||[]; } catch(e){ return []; } };
-    words=p('voca_words'); phrases=p('voca_phrases'); sentences=p('voca_sentences'); patterns=p('voca_patterns');
+    words     = p(lsKey('words'));
+    phrases   = p(lsKey('phrases'));
+    sentences = p(lsKey('sentences'));
+    patterns  = p(lsKey('patterns'));
 }
 function saveLocal() {
-    localStorage.setItem('voca_words',     JSON.stringify(words));
-    localStorage.setItem('voca_phrases',   JSON.stringify(phrases));
-    localStorage.setItem('voca_sentences', JSON.stringify(sentences));
-    localStorage.setItem('voca_patterns',  JSON.stringify(patterns));
+    localStorage.setItem(lsKey('words'),     JSON.stringify(words));
+    localStorage.setItem(lsKey('phrases'),   JSON.stringify(phrases));
+    localStorage.setItem(lsKey('sentences'), JSON.stringify(sentences));
+    localStorage.setItem(lsKey('patterns'),  JSON.stringify(patterns));
 }
-loadLocal();
 
-function initFirebase() {
+function bindFirebase() {
+    const paths = USERS[currentUser].paths;
+    const db    = window._db;
+    const bind  = (path, assign) => db.ref(path).on('value', snap => {
+        const val = snap.val();
+        assign(val ? Object.keys(val).map(k=>({id:k,...val[k]})) : []);
+        saveLocal();
+    });
+    bind(paths.words,     arr => words     = arr);
+    bind(paths.phrases,   arr => phrases   = arr);
+    bind(paths.sentences, arr => sentences = arr);
+    bind(paths.patterns,  arr => patterns  = arr);
+}
+
+function tryInitFirebase() {
     const cfg = { apiKey:"AIzaSyCTVfsVWULs99Tgind1z_wqbjCJPI63Esg", authDomain:"my-eng-word.firebaseapp.com", databaseURL:"https://my-eng-word-default-rtdb.asia-southeast1.firebasedatabase.app", projectId:"my-eng-word", storageBucket:"my-eng-word.firebasestorage.app", messagingSenderId:"216506701187", appId:"1:216506701187:web:b814513e64777b35fc12b6" };
     try {
-        firebase.initializeApp(cfg);
-        const db = firebase.database();
-        const bind = path => db.ref(path).on('value', snap => {
-            const val = snap.val();
-            const arr = val ? Object.keys(val).map(k=>({id:k,...val[k]})) : [];
-            if(path==='words/')     words=arr;
-            if(path==='phrases/')   phrases=arr;
-            if(path==='sentences/') sentences=arr;
-            if(path==='patterns/')  patterns=arr;
-            saveLocal();
-        });
-        ['words/','phrases/','sentences/','patterns/'].forEach(bind);
-        document.getElementById('syncBadge').textContent='🔴 Firebase Live';
+        if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(cfg);
+        window._db = firebase.database();
+        document.getElementById('syncBadge').textContent = '🔴 Firebase Live';
         document.getElementById('syncBadge').classList.add('live');
-        window._db = db;
-    } catch(e){}
+        bindFirebase();
+    } catch(e) { /* stay on localStorage */ }
 }
-function dbPush(path, data) {
+
+// Load Firebase SDK dynamically
+const s1=document.createElement('script');
+s1.src='https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js';
+s1.onload=()=>{ const s2=document.createElement('script'); s2.src='https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js'; s2.onload=()=>{ if(currentUser) tryInitFirebase(); }; document.head.appendChild(s2); };
+document.head.appendChild(s1);
+
+function dbPush(typeKey, data) {
+    const path = USERS[currentUser].paths[typeKey];
     if (window._db) return window._db.ref(path).push(data);
     const id='local_'+Date.now()+'_'+Math.random().toString(36).slice(2);
     const item={id,...data};
-    if(path.startsWith('words'))     { words.push(item);     }
-    if(path.startsWith('phrases'))   { phrases.push(item);   }
-    if(path.startsWith('sentences')) { sentences.push(item); }
-    if(path.startsWith('patterns'))  { patterns.push(item);  }
-    saveLocal();
-    return Promise.resolve({key:id});
+    if(typeKey==='words')     { words.push(item);     }
+    if(typeKey==='phrases')   { phrases.push(item);   }
+    if(typeKey==='sentences') { sentences.push(item); }
+    if(typeKey==='patterns')  { patterns.push(item);  }
+    saveLocal(); return Promise.resolve({key:id});
 }
-function dbRemove(path, id) {
-    if (window._db) return window._db.ref(`${path}/${id}`).remove();
-    if(path==='words')     words=words.filter(x=>x.id!==id);
-    if(path==='phrases')   phrases=phrases.filter(x=>x.id!==id);
-    if(path==='sentences') sentences=sentences.filter(x=>x.id!==id);
-    if(path==='patterns')  patterns=patterns.filter(x=>x.id!==id);
+function dbRemove(typeKey, id) {
+    const path = USERS[currentUser].paths[typeKey];
+    if (window._db) return window._db.ref(`${path}${id}`).remove();
+    if(typeKey==='words')     words     = words.filter(x=>x.id!==id);
+    if(typeKey==='phrases')   phrases   = phrases.filter(x=>x.id!==id);
+    if(typeKey==='sentences') sentences = sentences.filter(x=>x.id!==id);
+    if(typeKey==='patterns')  patterns  = patterns.filter(x=>x.id!==id);
     saveLocal(); return Promise.resolve();
 }
-
-const s1=document.createElement('script');
-s1.src='https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js';
-s1.onload=()=>{ const s2=document.createElement('script'); s2.src='https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js'; s2.onload=initFirebase; document.head.appendChild(s2); };
-document.head.appendChild(s1);
 
 // ══════════════════════════════════════════════════════
 //  UTILITIES
 // ══════════════════════════════════════════════════════
 function speak(t) { window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t); u.lang='en-US'; window.speechSynthesis.speak(u); }
-function speakPattern(t) { const clean=t.replace(/_{2,}/g, 'blank'); speak(clean); }
+function speakPattern(t) { const clean=t.replace(/_{2,}/g,'blank'); speak(clean); }
 function esc(s) { return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 function flashBtn(btn, msg) { const o=btn.textContent; btn.textContent=msg; btn.disabled=true; btn.style.opacity='1'; setTimeout(()=>{ btn.textContent=o; btn.disabled=false; },1600); }
 
@@ -393,7 +462,7 @@ function switchTab(t) {
 }
 
 // ══════════════════════════════════════════════════════
-//  SENTENCE MODE TOGGLE
+//  SENTENCE MODE
 // ══════════════════════════════════════════════════════
 function setSentMode(mode) {
     document.getElementById('sentQuickPane').style.display  = mode==='quick'  ? 'block' : 'none';
@@ -401,77 +470,48 @@ function setSentMode(mode) {
     document.getElementById('sent-mode-quick').classList.toggle('active',  mode==='quick');
     document.getElementById('sent-mode-manual').classList.toggle('active', mode==='manual');
 }
-
-// ── Sentence Quick Paste Parser ──
-let _sentParsed = null;
-
+let _sentParsed=null;
 function parseSentenceQuick(val) {
-    const preview = document.getElementById('sentQuickPreview');
-    const saveBtn = document.getElementById('sentQuickSaveBtn');
-    const parts   = val.split(/\n---\n/); // split on "---" surrounded by newlines
-
-    const original = (parts[0]||'').trim();
-    const casual   = (parts[1]||'').trim();
-    const formal   = (parts[2]||'').trim();
-
-    if (!original) {
-        preview.innerHTML = '';
-        saveBtn.disabled = true; saveBtn.style.opacity = '0.5';
-        _sentParsed = null;
-        return;
-    }
-
-    _sentParsed = { original, casual, formal };
-
-    preview.innerHTML = `
-        <div class="preview-strip">
-            <div class="preview-row row-original">
-                <span class="lbl">🔴 Original</span>
-                ${original || '<span class="preview-empty">empty</span>'}
-            </div>
-            <div class="preview-row row-casual">
-                <span class="lbl">💬 Casual</span>
-                ${casual || '<span class="preview-empty">empty — paste below the first ---</span>'}
-            </div>
-            <div class="preview-row row-formal">
-                <span class="lbl">💼 Formal</span>
-                ${formal || '<span class="preview-empty">empty — paste below the second ---</span>'}
-            </div>
-        </div>`;
-
-    saveBtn.disabled = false; saveBtn.style.opacity = '1';
+    const preview=document.getElementById('sentQuickPreview');
+    const saveBtn=document.getElementById('sentQuickSaveBtn');
+    const parts=val.split(/\n---\n/);
+    const original=(parts[0]||'').trim(), casual=(parts[1]||'').trim(), formal=(parts[2]||'').trim();
+    if(!original){preview.innerHTML='';saveBtn.disabled=true;saveBtn.style.opacity='0.5';_sentParsed=null;return;}
+    _sentParsed={original,casual,formal};
+    preview.innerHTML=`<div class="preview-strip">
+        <div class="preview-row row-original"><span class="lbl">🔴 Original</span>${original||'<span class="preview-empty">empty</span>'}</div>
+        <div class="preview-row row-casual"><span class="lbl">💬 Casual</span>${casual||'<span class="preview-empty">empty</span>'}</div>
+        <div class="preview-row row-formal"><span class="lbl">💼 Formal</span>${formal||'<span class="preview-empty">empty</span>'}</div>
+    </div>`;
+    saveBtn.disabled=false;saveBtn.style.opacity='1';
 }
-
 function saveSentenceQuick() {
-    if (!_sentParsed || !_sentParsed.original) return;
-    dbPush('sentences/', { ..._sentParsed, timestamp: Date.now() });
-    flashBtn(document.getElementById('sentQuickSaveBtn'), '✅ Saved!');
+    if(!_sentParsed||!_sentParsed.original)return;
+    dbPush('sentences',{..._sentParsed,timestamp:Date.now()});
+    flashBtn(document.getElementById('sentQuickSaveBtn'),'✅ Saved!');
     clearSentQuick();
 }
-
 function clearSentQuick() {
-    document.getElementById('sentQuickInput').value = '';
-    document.getElementById('sentQuickPreview').innerHTML = '';
-    document.getElementById('sentQuickSaveBtn').disabled = true;
-    document.getElementById('sentQuickSaveBtn').style.opacity = '0.5';
-    _sentParsed = null;
+    document.getElementById('sentQuickInput').value='';
+    document.getElementById('sentQuickPreview').innerHTML='';
+    document.getElementById('sentQuickSaveBtn').disabled=true;
+    document.getElementById('sentQuickSaveBtn').style.opacity='0.5';
+    _sentParsed=null;
 }
-
-// ── Sentence Manual Save ──
 function saveSentenceManual() {
-    const original = document.getElementById('sentOriginal').value.trim();
-    const casual   = document.getElementById('sentCasual').value.trim();
-    const formal   = document.getElementById('sentFormal').value.trim();
-    if (!original) { alert('Please enter your original sentence.'); return; }
-    dbPush('sentences/', { original, casual, formal, timestamp: Date.now() });
+    const original=document.getElementById('sentOriginal').value.trim();
+    const casual=document.getElementById('sentCasual').value.trim();
+    const formal=document.getElementById('sentFormal').value.trim();
+    if(!original){alert('Please enter your original sentence.');return;}
+    dbPush('sentences',{original,casual,formal,timestamp:Date.now()});
     document.getElementById('sentOriginal').value='';
     document.getElementById('sentCasual').value='';
     document.getElementById('sentFormal').value='';
-    flashBtn(document.getElementById('sentManualSaveBtn'), '✅ Saved!');
+    flashBtn(document.getElementById('sentManualSaveBtn'),'✅ Saved!');
 }
 
 // ══════════════════════════════════════════════════════
-//  PATTERN MODE TOGGLE
+//  PATTERN MODE
 // ══════════════════════════════════════════════════════
 function setPatMode(mode) {
     document.getElementById('patQuickPane').style.display  = mode==='quick'  ? 'block' : 'none';
@@ -479,48 +519,22 @@ function setPatMode(mode) {
     document.getElementById('pat-mode-quick').classList.toggle('active',  mode==='quick');
     document.getElementById('pat-mode-manual').classList.toggle('active', mode==='manual');
 }
-
-// ── Pattern Quick Paste Parser ──
-let _patParsed = [];
-
+let _patParsed=[];
 function parsePatternQuick(val) {
-    const preview = document.getElementById('patQuickPreview');
-    const saveBtn = document.getElementById('patQuickSaveBtn');
-
-    const lines = val.split('\n').map(l=>l.trim()).filter(l=>l.length>0 && !l.startsWith('//'));
-
-    _patParsed = lines.map(line => {
-        const parts    = line.split('|').map(p=>p.trim());
-        const text     = parts[0] || '';
-        const category = parts[1] || 'General';
-        const note     = parts[2] || '';
-        return { text, category, note };
-    }).filter(p => p.text.length > 0);
-
-    if (!_patParsed.length) {
-        preview.innerHTML = '';
-        saveBtn.disabled=true; saveBtn.style.opacity='0.5';
-        return;
-    }
-
-    preview.innerHTML = _patParsed.map(p => `
-        <div class="pat-preview-item">
-            <span class="pc">${p.category}</span>
-            <div class="pt">${p.text}</div>
-            ${p.note ? `<div class="pn">📌 ${p.note}</div>` : ''}
-        </div>`).join('');
-
-    saveBtn.textContent = `💾 Save All (${_patParsed.length})`;
-    saveBtn.disabled=false; saveBtn.style.opacity='1';
+    const preview=document.getElementById('patQuickPreview');
+    const saveBtn=document.getElementById('patQuickSaveBtn');
+    const lines=val.split('\n').map(l=>l.trim()).filter(l=>l.length>0&&!l.startsWith('//'));
+    _patParsed=lines.map(line=>{const p=line.split('|').map(x=>x.trim());return{text:p[0]||'',category:p[1]||'General',note:p[2]||''};}).filter(p=>p.text.length>0);
+    if(!_patParsed.length){preview.innerHTML='';saveBtn.disabled=true;saveBtn.style.opacity='0.5';return;}
+    preview.innerHTML=_patParsed.map(p=>`<div class="pat-preview-item"><span class="pc">${p.category}</span><div class="pt">${p.text}</div>${p.note?`<div class="pn">📌 ${p.note}</div>`:''}</div>`).join('');
+    saveBtn.textContent=`💾 Save All (${_patParsed.length})`;saveBtn.disabled=false;saveBtn.style.opacity='1';
 }
-
 function savePatternQuick() {
-    if (!_patParsed.length) return;
-    _patParsed.forEach(p => dbPush('patterns/', { ...p, timestamp: Date.now() }));
-    flashBtn(document.getElementById('patQuickSaveBtn'), `✅ ${_patParsed.length} Saved!`);
+    if(!_patParsed.length)return;
+    _patParsed.forEach(p=>dbPush('patterns',{...p,timestamp:Date.now()}));
+    flashBtn(document.getElementById('patQuickSaveBtn'),`✅ ${_patParsed.length} Saved!`);
     clearPatQuick();
 }
-
 function clearPatQuick() {
     document.getElementById('patQuickInput').value='';
     document.getElementById('patQuickPreview').innerHTML='';
@@ -529,19 +543,16 @@ function clearPatQuick() {
     document.getElementById('patQuickSaveBtn').textContent='💾 Save All';
     _patParsed=[];
 }
-
-// ── Pattern Manual Save ──
 function savePatternManual() {
-    const text     = document.getElementById('patText').value.trim();
-    const category = document.getElementById('patCategory').value.trim() || 'General';
-    const note     = document.getElementById('patNote').value.trim();
-    if (!text) { alert('Please enter an expression pattern.'); return; }
-    dbPush('patterns/', { text, category, note, timestamp: Date.now() });
+    const text=document.getElementById('patText').value.trim();
+    const category=document.getElementById('patCategory').value.trim()||'General';
+    const note=document.getElementById('patNote').value.trim();
+    if(!text){alert('Please enter an expression pattern.');return;}
+    dbPush('patterns',{text,category,note,timestamp:Date.now()});
     document.getElementById('patText').value='';
     document.getElementById('patCategory').value='';
     document.getElementById('patNote').value='';
-    const btn=document.querySelector('[onclick="savePatternManual()"]');
-    flashBtn(btn, '✅ Saved!');
+    flashBtn(document.querySelector('[onclick="savePatternManual()"]'),'✅ Saved!');
 }
 
 // ══════════════════════════════════════════════════════
@@ -557,7 +568,7 @@ function realTimeFilter(val) {
 }
 async function fetchApiData() {
     const val=document.getElementById('wordInput').value.trim();
-    if(!val) return;
+    if(!val)return;
     try {
         const res=await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${val}`);
         const data=await res.json();
@@ -571,19 +582,18 @@ async function fetchApiData() {
         } else { alert('Word not found.'); }
     } catch(e){ alert('Network error.'); }
 }
-document.getElementById('wordInput').addEventListener('keydown',e=>{if(e.key==='Enter') fetchApiData();});
+document.getElementById('wordInput').addEventListener('keydown',e=>{if(e.key==='Enter')fetchApiData();});
 document.getElementById('saveBtn').onclick=()=>{
-    dbPush('words/',{word:document.getElementById('resWord').innerText,meaning:document.getElementById('resMeaning').value,korean:document.getElementById('resKorean').value,phonetic:document.getElementById('resPhonetic').innerText,timestamp:Date.now()});
+    dbPush('words',{word:document.getElementById('resWord').innerText,meaning:document.getElementById('resMeaning').value,korean:document.getElementById('resKorean').value,phonetic:document.getElementById('resPhonetic').innerText,timestamp:Date.now()});
     document.getElementById('searchResult').style.display='none';
     document.getElementById('wordInput').value='';
     document.getElementById('filterResults').style.display='none';
 };
-
 function savePhrase(){
     const p=document.getElementById('phraseInput').value.trim();
     const m=document.getElementById('phraseMeaningInput').value.trim();
-    if(!p) return;
-    dbPush('phrases/',{phrase:p,meaning:m,timestamp:Date.now()});
+    if(!p)return;
+    dbPush('phrases',{phrase:p,meaning:m,timestamp:Date.now()});
     document.getElementById('phraseInput').value='';
     document.getElementById('phraseMeaningInput').value='';
 }
@@ -591,16 +601,15 @@ function savePhrase(){
 // ══════════════════════════════════════════════════════
 //  SENTENCE REVIEW
 // ══════════════════════════════════════════════════════
-let sentPool=[], sentIndex=0;
-
+let sentPool=[],sentIndex=0;
 function startSentenceReview(){
     if(!sentences.length){alert('No sentences saved yet.');return;}
-    sentPool=[...sentences].sort(()=>Math.random()-0.5); sentIndex=0;
-    showModal('📝 Sentence Review'); renderSentenceCard();
+    sentPool=[...sentences].sort(()=>Math.random()-0.5);sentIndex=0;
+    showModal('📝 Sentence Review');renderSentenceCard();
 }
 function renderSentenceCard(){
     if(sentIndex>=sentPool.length){
-        document.getElementById('modalContent').innerHTML=`<div style="text-align:center;padding:20px;"><div style="font-size:2.5em;">🎉</div><h3>All sentences reviewed!</h3><button class="btn btn-sent" style="width:100%;margin-bottom:10px;" onclick="startSentenceReview()">Shuffle & Restart</button><button class="btn" style="width:100%;background:#eee;color:#777;" onclick="closeModal()">Close</button></div>`;
+        document.getElementById('modalContent').innerHTML=`<div style="text-align:center;padding:20px;"><div style="font-size:2.5em;">🎉</div><h3>All reviewed!</h3><button class="btn btn-sent" style="width:100%;margin-bottom:10px;" onclick="startSentenceReview()">Shuffle & Restart</button><button class="btn" style="width:100%;background:#eee;color:#777;" onclick="closeModal()">Close</button></div>`;
         return;
     }
     const s=sentPool[sentIndex];
@@ -620,21 +629,14 @@ function revealSentence(){
         ${s.casual?`<div class="reveal-box"><div class="rev-label">💬 CASUAL</div><div class="rev-text">${s.casual}</div></div>`:''}
         ${s.formal?`<div class="reveal-box formal-box"><div class="rev-label">💼 FORMAL</div><div class="rev-text">${s.formal}</div></div>`:''}`;
     const btn=document.querySelector('[onclick="revealSentence()"]');
-    if(btn) btn.style.display='none';
-    if(s.casual) speak(s.casual);
+    if(btn)btn.style.display='none';
+    if(s.casual)speak(s.casual);
 }
-function nextSentenceCard(){ sentIndex++; renderSentenceCard(); }
-
+function nextSentenceCard(){sentIndex++;renderSentenceCard();}
 function openSentenceList(){
     if(!sentences.length){showModal('📝 Sentences');document.getElementById('modalContent').innerHTML=`<div class="empty-msg">No sentences saved yet.</div>`;return;}
     const sorted=[...sentences].sort((a,b)=>b.timestamp-a.timestamp);
-    const html=sorted.map(s=>`
-        <div class="sent-card" style="position:relative;">
-            <span class="delete-btn" onclick="softDelete('sentence','${s.id}')">🗑</span>
-            <div class="sent-original"><span>YOUR ORIGINAL</span>${s.original}</div>
-            ${s.casual?`<div class="sent-casual"><span>CASUAL</span>${s.casual}</div>`:''}
-            ${s.formal?`<div class="sent-formal"><span>FORMAL</span>${s.formal}</div>`:''}
-        </div>`).join('');
+    const html=sorted.map(s=>`<div class="sent-card" style="position:relative;"><span class="delete-btn" onclick="softDelete('sentences','${s.id}')">🗑</span><div class="sent-original"><span>YOUR ORIGINAL</span>${s.original}</div>${s.casual?`<div class="sent-casual"><span>CASUAL</span>${s.casual}</div>`:''}${s.formal?`<div class="sent-formal"><span>FORMAL</span>${s.formal}</div>`:''}</div>`).join('');
     showModal(`📝 ${sorted.length} Sentences`);
     document.getElementById('modalContent').innerHTML=html;
 }
@@ -642,17 +644,16 @@ function openSentenceList(){
 // ══════════════════════════════════════════════════════
 //  PATTERN REVIEW
 // ══════════════════════════════════════════════════════
-let patPool=[], patIndex=0, patFilter='All';
-
+let patPool=[],patIndex=0,patFilter='All';
 function startPatternReview(){
     if(!patterns.length){alert('No patterns saved yet.');return;}
-    patFilter='All'; patPool=[...patterns].sort(()=>Math.random()-0.5); patIndex=0;
-    showModal('🃏 Pattern Cards'); renderPatternCard();
+    patFilter='All';patPool=[...patterns].sort(()=>Math.random()-0.5);patIndex=0;
+    showModal('🃏 Pattern Cards');renderPatternCard();
 }
 function renderPatternCard(){
     const filtered=patFilter==='All'?patPool:patPool.filter(p=>p.category===patFilter);
     if(!filtered.length){document.getElementById('modalContent').innerHTML=`<div class="empty-msg">No patterns in this category.</div>`;return;}
-    if(patIndex>=filtered.length) patIndex=0;
+    if(patIndex>=filtered.length)patIndex=0;
     const p=filtered[patIndex];
     const pct=Math.round(((patIndex+1)/filtered.length)*100);
     const cats=['All',...new Set(patterns.map(p=>p.category).filter(Boolean))];
@@ -674,14 +675,13 @@ function renderPatternCard(){
         <button onclick="closeModal()" class="btn" style="width:100%;margin-top:15px;background:#eee;color:#777;">Close</button>`;
     speakPattern(p.text);
 }
-function setPatFilter(cat){ patFilter=cat; patIndex=0; renderPatternCard(); }
-function nextPatternCard(){ patIndex++; renderPatternCard(); }
-function prevPatternCard(){ const f=patFilter==='All'?patPool:patPool.filter(p=>p.category===patFilter); patIndex=(patIndex-1+f.length)%f.length; renderPatternCard(); }
-
+function setPatFilter(cat){patFilter=cat;patIndex=0;renderPatternCard();}
+function nextPatternCard(){patIndex++;renderPatternCard();}
+function prevPatternCard(){const f=patFilter==='All'?patPool:patPool.filter(p=>p.category===patFilter);patIndex=(patIndex-1+f.length)%f.length;renderPatternCard();}
 function openPatternList(){
     if(!patterns.length){showModal('🃏 Patterns');document.getElementById('modalContent').innerHTML=`<div class="empty-msg">No patterns saved yet.</div>`;return;}
     const sorted=[...patterns].sort((a,b)=>b.timestamp-a.timestamp);
-    const html=sorted.map(p=>`<div class="pat-card"><span class="delete-btn" onclick="softDelete('pattern','${p.id}')">🗑</span><div class="pat-category">${p.category||'General'}</div><div class="pat-text">${p.text}</div>${p.note?`<div class="pat-note">📌 ${p.note}</div>`:''}</div>`).join('');
+    const html=sorted.map(p=>`<div class="pat-card"><span class="delete-btn" onclick="softDelete('patterns','${p.id}')">🗑</span><div class="pat-category">${p.category||'General'}</div><div class="pat-text">${p.text}</div>${p.note?`<div class="pat-note">📌 ${p.note}</div>`:''}</div>`).join('');
     showModal(`🃏 ${sorted.length} Patterns`);
     document.getElementById('modalContent').innerHTML=html;
 }
@@ -691,12 +691,11 @@ function openPatternList(){
 // ══════════════════════════════════════════════════════
 const QUIZ_LIMIT=20;
 let currentPool=[],currentStyle='',currentQuizWord=null,questionCount=0,correctCount=0,wrongCount=0,wrongLog=[],reQuizMode=false,reQuizLimit=0;
-
 function startQuiz(type,style){
     const pool=type==='today'?words.filter(w=>w.timestamp>new Date().setHours(0,0,0,0)):[...words];
     if(!pool.length){alert('No words found.');return;}
     currentPool=pool;currentStyle=style;questionCount=0;correctCount=0;wrongLog=[];reQuizMode=false;
-    showModal('Quiz'); nextQuestion();
+    showModal('Quiz');nextQuestion();
 }
 function nextQuestion(){
     const limit=reQuizMode?reQuizLimit:QUIZ_LIMIT;
@@ -735,11 +734,11 @@ function checkAnswer(val,btnEl){
         else setTimeout(nextQuestion,300);
     } else {
         wrongCount++;
-        if(!wrongLog.find(w=>w.word===currentQuizWord.word)) wrongLog.push({word:currentQuizWord.word,meaning:currentQuizWord.meaning,korean:currentQuizWord.korean||''});
-        if(btnEl) btnEl.classList.add('wrong');
+        if(!wrongLog.find(w=>w.word===currentQuizWord.word))wrongLog.push({word:currentQuizWord.word,meaning:currentQuizWord.meaning,korean:currentQuizWord.korean||''});
+        if(btnEl)btnEl.classList.add('wrong');
         if(wrongCount>=2){
             const cb=document.getElementById('cbtn-'+currentQuizWord.word.replace(/\W/g,'_'));
-            if(cb) cb.classList.add('correct');
+            if(cb)cb.classList.add('correct');
             document.querySelectorAll('.choice-btn').forEach(b=>b.disabled=true);
             const inp=document.getElementById('qInput');
             if(inp){inp.value=currentQuizWord.word;inp.style.color='var(--warn)';inp.disabled=true;}
@@ -759,11 +758,8 @@ function showQuizResult(){
     const accuracy=total>0?Math.round((correctCount/total)*100):0;
     document.getElementById('modalTitle').innerText='Result';
     let html=`<div style="text-align:center;padding:10px;"><div style="font-size:2.5em;">🎯</div><h2 style="margin:8px 0;">Quiz Finished!</h2><div class="result-score">${correctCount} / ${total}</div><div style="color:#aaa;margin-bottom:20px;">Accuracy: <b style="color:var(--main);">${accuracy}%</b></div>`;
-    if(!wrongLog.length){
-        html+=`<div style="color:var(--accent);font-size:1.2em;font-weight:bold;margin-bottom:20px;">🏆 Perfect! No mistakes!</div>`;
-    } else {
-        html+=`<div style="text-align:left;margin-bottom:15px;"><div style="font-weight:700;color:var(--warn);margin-bottom:10px;">❌ Words to review (${wrongLog.length})</div>${wrongLog.map(w=>`<div class="error-item"><b>${w.word}</b><small>${w.meaning}</small>${w.korean?`<small style="color:var(--main);">🇰🇷 ${w.korean}</small>`:''}</div>`).join('')}</div><button class="btn btn-today" style="width:100%;margin-bottom:10px;" onclick="startReQuiz()">🔁 Re-quiz Wrong Answers (${wrongLog.length})</button>`;
-    }
+    if(!wrongLog.length){html+=`<div style="color:var(--accent);font-size:1.2em;font-weight:bold;margin-bottom:20px;">🏆 Perfect! No mistakes!</div>`;}
+    else{html+=`<div style="text-align:left;margin-bottom:15px;"><div style="font-weight:700;color:var(--warn);margin-bottom:10px;">❌ Words to review (${wrongLog.length})</div>${wrongLog.map(w=>`<div class="error-item"><b>${w.word}</b><small>${w.meaning}</small>${w.korean?`<small style="color:var(--main);">🇰🇷 ${w.korean}</small>`:''}</div>`).join('')}</div><button class="btn btn-today" style="width:100%;margin-bottom:10px;" onclick="startReQuiz()">🔁 Re-quiz Wrong Answers (${wrongLog.length})</button>`;}
     html+=`<button onclick="closeModal()" class="btn" style="width:100%;background:#eee;color:#777;">Close</button></div>`;
     document.getElementById('modalContent').innerHTML=html;
 }
@@ -792,10 +788,10 @@ function nextPhrase(){
 // ══════════════════════════════════════════════════════
 function openList(mode,sort){
     let data=mode==='word'?[...words]:[...phrases];
-    if(sort==='abc') data.sort((a,b)=>(a.word||a.phrase||'').localeCompare(b.word||b.phrase||''));
+    if(sort==='abc')data.sort((a,b)=>(a.word||a.phrase||'').localeCompare(b.word||b.phrase||''));
     else data.sort((a,b)=>b.timestamp-a.timestamp);
     if(!data.length){showModal(mode==='word'?'📚 Words':'💬 Phrases');document.getElementById('modalContent').innerHTML=`<div class="empty-msg">Nothing saved yet.</div>`;return;}
-    const html=data.map(item=>{const display=item.word||item.phrase||'';const sub=item.korean||item.meaning||'';return`<div class="item-card"><span class="delete-btn" onclick="softDelete('${mode}','${item.id}')">🗑</span><b style="cursor:pointer;" onclick="speak('${esc(display)}')">${display} 🔊</b><br><small style="color:#777;margin-top:4px;display:block;">${sub}</small></div>`;}).join('');
+    const html=data.map(item=>{const display=item.word||item.phrase||'';const sub=item.korean||item.meaning||'';return`<div class="item-card"><span class="delete-btn" onclick="softDelete('${mode==='word'?'words':'phrases'}','${item.id}')">🗑</span><b style="cursor:pointer;" onclick="speak('${esc(display)}')">${display} 🔊</b><br><small style="color:#777;margin-top:4px;display:block;">${sub}</small></div>`;}).join('');
     showModal(`${mode==='word'?'📚':'💬'} ${data.length} ${mode==='word'?'Words':'Phrases'}`);
     document.getElementById('modalContent').innerHTML=html;
 }
@@ -817,21 +813,20 @@ function closeModal(){
 // ══════════════════════════════════════════════════════
 //  DELETE / UNDO
 // ══════════════════════════════════════════════════════
-function softDelete(mode,id){
-    const arr={word:words,phrase:phrases,sentence:sentences,pattern:patterns}[mode];
+function softDelete(typeKey,id){
+    const map={words,phrases,sentences,patterns};
+    const arr=map[typeKey];
     const target=arr?arr.find(x=>x.id===id):null;
     if(!target)return;
-    lastDeleted={mode,id,data:{...target}};
-    const pathMap={word:'words',phrase:'phrases',sentence:'sentences',pattern:'patterns'};
-    dbRemove(pathMap[mode],id);
+    lastDeleted={typeKey,id,data:{...target}};
+    dbRemove(typeKey,id);
     document.getElementById('undoBar').style.display='block';
     setTimeout(()=>document.getElementById('undoBar').style.display='none',5000);
     closeModal();
 }
 function undoDelete(){
     if(!lastDeleted)return;
-    const pathMap={word:'words/',phrase:'phrases/',sentence:'sentences/',pattern:'patterns/'};
-    dbPush(pathMap[lastDeleted.mode],lastDeleted.data);
+    dbPush(lastDeleted.typeKey,lastDeleted.data);
     lastDeleted=null;
     document.getElementById('undoBar').style.display='none';
 }
