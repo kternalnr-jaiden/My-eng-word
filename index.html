@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voca & Phrase Cloud v4.3</title>
+    <title>Voca & Phrase Cloud v4.4</title>
     <style>
         :root { --main: #6c5ce7; --bg: #f0f2f5; --card: #ffffff; --text: #2d3436; --accent: #00b894; --warn: #d63031; --phrase: #fdcb6e; --sentence: #a29bfe; --pattern: #55efc4; }
 
@@ -69,6 +69,31 @@
         .mode-toggle { display: flex; background: #f0f2f5; border-radius: 10px; padding: 4px; margin-bottom: 16px; gap: 4px; }
         .mode-btn { flex: 1; padding: 8px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; background: transparent; color: #aaa; transition: 0.2s; font-family: inherit; }
         .mode-btn.active { background: white; color: var(--main); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+        /* ── WORD QUICK PASTE ── */
+        .word-quick-box {
+            background: #fafafa; border: 2px dashed #d1c4e9; border-radius: 14px;
+            padding: 16px; margin-bottom: 12px; transition: border-color 0.2s;
+        }
+        .word-quick-box:focus-within { border-color: var(--main); }
+        .word-quick-box textarea {
+            width: 100%; box-sizing: border-box; border: none; background: transparent;
+            font-size: 14px; font-family: inherit; resize: none; outline: none;
+            line-height: 1.8; min-height: 160px; color: var(--text);
+        }
+
+        /* ── WORD PREVIEW CARD ── */
+        .word-preview-item {
+            background: white; border: 1px solid #d1c4e9; border-radius: 10px;
+            padding: 10px 14px; margin-bottom: 7px; animation: fadeIn 0.2s ease;
+            display: flex; align-items: flex-start; gap: 12px;
+        }
+        .word-preview-item .wp-word {
+            font-size: 1em; font-weight: 700; color: var(--main);
+            min-width: 90px; flex-shrink: 0;
+        }
+        .word-preview-item .wp-meaning { font-size: 0.88em; color: #555; line-height: 1.5; flex: 1; }
+        .word-preview-item .wp-korean  { font-size: 0.82em; color: var(--main); margin-top: 2px; }
 
         .quick-box { background: #fafafa; border: 2px dashed #d1c4e9; border-radius: 14px; padding: 16px; margin-bottom: 12px; transition: border-color 0.2s; }
         .quick-box:focus-within { border-color: var(--sentence); }
@@ -145,7 +170,7 @@
         .sync-badge.live { background: #d4efdf; color: #1e8449; }
         .empty-msg { text-align: center; color: #aaa; padding: 40px 0; }
         .pill-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
-        .pill { padding: 5px 13px; border-radius: 20px; border: 2px solid #eee; background: white; cursor: pointer; font-size: 12px; font-weight: 600; transition: 0.15s; }
+        .pill { padding: 5px 13px; border-radius: 20px; border: 2px solid #eee; background: white; cursor: pointer; font-size: 12px; font-weight: 600; transition: 0.15px; }
         .pill.active { background: var(--pattern); border-color: var(--pattern); color: #2d3436; }
     </style>
 </head>
@@ -174,7 +199,6 @@
     <div style="display:flex; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:4px;">
         <span style="font-size:1.3em; font-weight:800; color:var(--main);">Voca Cloud</span>
         <span class="sync-badge" id="syncBadge">localStorage</span>
-        <!-- User badge — click to switch user -->
         <span class="user-badge" id="userBadge" onclick="switchUser()" title="Switch user">
             <span class="badge-emoji" id="badgeEmoji"></span>
             <span id="badgeName"></span>
@@ -191,28 +215,68 @@
 
     <!-- ══ WORD ══ -->
     <div id="wordSection">
-        <div style="display:flex; gap:8px;">
-            <input type="text" id="wordInput" class="input-style" placeholder="Search or filter saved words..." oninput="realTimeFilter(this.value)">
-            <button onclick="fetchApiData()" class="btn btn-main">Search</button>
+        <!-- Mode Toggle -->
+        <div class="mode-toggle">
+            <button class="mode-btn active" id="word-mode-search" onclick="setWordMode('search')">🔍 Search / Add</button>
+            <button class="mode-btn"        id="word-mode-quick"  onclick="setWordMode('quick')">⚡ Quick Paste</button>
         </div>
-        <div id="filterResults"></div>
-        <div id="searchResult" style="display:none; background:#f9f9ff; padding:15px; border-radius:15px; margin-top:15px; border:1px solid var(--main);">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3 id="resWord" style="margin:0;"></h3>
-                <span id="resPhonetic" style="color:var(--accent);"></span>
+
+        <!-- ── SEARCH / ADD PANE (existing) ── -->
+        <div id="wordSearchPane">
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="wordInput" class="input-style" placeholder="Search or filter saved words..." oninput="realTimeFilter(this.value)">
+                <button onclick="fetchApiData()" class="btn btn-main">Search</button>
             </div>
-            <div id="dictLinks" style="margin:8px 0;"></div>
-            <textarea id="resMeaning" class="input-style" rows="2" placeholder="English Definition"></textarea>
-            <input type="text" id="resKorean" class="input-style" placeholder="Korean meaning (Optional)">
-            <button id="saveBtn" class="btn btn-main" style="width:100%;">Save Word</button>
+            <div id="filterResults"></div>
+            <div id="searchResult" style="display:none; background:#f9f9ff; padding:15px; border-radius:15px; margin-top:15px; border:1px solid var(--main);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 id="resWord" style="margin:0;"></h3>
+                    <span id="resPhonetic" style="color:var(--accent);"></span>
+                </div>
+                <div id="dictLinks" style="margin:8px 0;"></div>
+                <textarea id="resMeaning" class="input-style" rows="2" placeholder="English Definition"></textarea>
+                <input type="text" id="resKorean" class="input-style" placeholder="Korean meaning (Optional)">
+                <button id="saveBtn" class="btn btn-main" style="width:100%;">Save Word</button>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:15px;">
+                <button onclick="startQuiz('total','choice')" class="btn btn-main">📚 All Words Quiz</button>
+                <button onclick="startQuiz('total','spell')"  class="btn btn-main">✏️ All Words Spell</button>
+                <button onclick="startQuiz('today','choice')" class="btn btn-today">📅 Today's Quiz</button>
+                <button onclick="startQuiz('today','spell')"  class="btn btn-today">📅 Today's Spell</button>
+                <button onclick="openList('word','recent')"   class="btn btn-sub">🕐 By Recent</button>
+                <button onclick="openList('word','abc')"      class="btn btn-sub">🔤 By A–Z</button>
+            </div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:15px;">
-            <button onclick="startQuiz('total','choice')" class="btn btn-main">📚 All Words Quiz</button>
-            <button onclick="startQuiz('total','spell')"  class="btn btn-main">✏️ All Words Spell</button>
-            <button onclick="startQuiz('today','choice')" class="btn btn-today">📅 Today's Quiz</button>
-            <button onclick="startQuiz('today','spell')"  class="btn btn-today">📅 Today's Spell</button>
-            <button onclick="openList('word','recent')"   class="btn btn-sub">🕐 By Recent</button>
-            <button onclick="openList('word','abc')"      class="btn btn-sub">🔤 By A–Z</button>
+
+        <!-- ── QUICK PASTE PANE (new) ── -->
+        <div id="wordQuickPane" style="display:none;">
+            <div class="word-quick-box">
+                <textarea id="wordQuickInput"
+                    placeholder="Paste a vocabulary list — one word per line.
+
+── Format 1: Vocab Sheet ──
+1. award (n) – a prize such as a medal
+2. relay (n) – a race between teams
+3. crutch (n) – a stick to help you walk
+
+── Format 2: Pipe ──
+award | a prize such as a medal | 상
+relay | a race between teams | 릴레이"
+                    oninput="parseWordQuick(this.value)"></textarea>
+                <div class="quick-hint">📋 Supports <b>numbered vocab sheets</b> (pos + –) <b>or</b> <b>word | meaning | korean</b> · One word per line</div>
+            </div>
+            <div id="wordQuickPreview"></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
+                <button onclick="saveWordQuick()" class="btn btn-main" id="wordQuickSaveBtn" disabled style="opacity:0.5;">💾 Save All</button>
+                <button onclick="clearWordQuick()" class="btn" style="background:#eee; color:#777;">🗑 Clear</button>
+            </div>
+            <!-- Quiz / List buttons still accessible in quick paste mode -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; border-top:2px solid #f0f0f0; padding-top:14px;">
+                <button onclick="startQuiz('total','choice')" class="btn btn-main">📚 All Words Quiz</button>
+                <button onclick="startQuiz('total','spell')"  class="btn btn-main">✏️ All Words Spell</button>
+                <button onclick="openList('word','recent')"   class="btn btn-sub">🕐 By Recent</button>
+                <button onclick="openList('word','abc')"      class="btn btn-sub">🔤 By A–Z</button>
+            </div>
         </div>
     </div>
 
@@ -323,40 +387,31 @@ Just a heads-up — ___ | Casual Chat | Friendly warning'
 // ══════════════════════════════════════════════════════
 const USERS = {
     kitae: { name: 'Kitae', emoji: '👨', color: '#6c5ce7',
-             // Kitae keeps the original root paths — all existing data is safe
              paths: { words:'words/', phrases:'phrases/', sentences:'sentences/', patterns:'patterns/' },
              lsPrefix: 'kitae' },
     eunju: { name: 'Eunju', emoji: '👩', color: '#e84393',
-             // Eunju gets her own separate Firebase paths
              paths: { words:'eunju/words/', phrases:'eunju/phrases/', sentences:'eunju/sentences/', patterns:'eunju/patterns/' },
              lsPrefix: 'eunju' }
 };
 
-let currentUser = null;  // set by selectUser()
+let currentUser = null;
 
 function selectUser(userId) {
     currentUser = userId;
     localStorage.setItem('voca_last_user', userId);
-
-    // Update badge
     const u = USERS[userId];
     document.getElementById('badgeEmoji').textContent = u.emoji;
     document.getElementById('badgeName').textContent  = u.name;
     document.getElementById('userBadge').className    = `user-badge ${userId}`;
-
-    // Show app, hide user select
     document.getElementById('userSelectScreen').style.display = 'none';
     document.getElementById('appContainer').style.display     = 'block';
-
-    // Reset data arrays and reload for this user
     words=[]; phrases=[]; sentences=[]; patterns=[];
     loadLocal();
-    if (window._db) bindFirebase();  // re-bind Firebase listeners for this user
-    else tryInitFirebase();          // first time — init Firebase
+    if (window._db) bindFirebase();
+    else tryInitFirebase();
 }
 
 function switchUser() {
-    // Detach any Firebase listeners before switching
     if (window._db) {
         const prev = USERS[currentUser];
         Object.values(prev.paths).forEach(p => window._db.ref(p).off());
@@ -366,20 +421,17 @@ function switchUser() {
     document.getElementById('userSelectScreen').style.display = 'flex';
 }
 
-// Auto-login if user was remembered
 window.addEventListener('DOMContentLoaded', () => {
     const saved = localStorage.getItem('voca_last_user');
     if (saved && USERS[saved]) selectUser(saved);
 });
 
 // ══════════════════════════════════════════════════════
-//  DATA LAYER — localStorage + Firebase, per user
+//  DATA LAYER
 // ══════════════════════════════════════════════════════
 let words=[], phrases=[], sentences=[], patterns=[], lastDeleted=null;
 
-function lsKey(type) {
-    return `voca_${type}_${USERS[currentUser].lsPrefix}`;
-}
+function lsKey(type) { return `voca_${type}_${USERS[currentUser].lsPrefix}`; }
 function loadLocal() {
     const p = k => { try { return JSON.parse(localStorage.getItem(k))||[]; } catch(e){ return []; } };
     words     = p(lsKey('words'));
@@ -419,7 +471,6 @@ function tryInitFirebase() {
     } catch(e) { /* stay on localStorage */ }
 }
 
-// Load Firebase SDK dynamically
 const s1=document.createElement('script');
 s1.src='https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js';
 s1.onload=()=>{ const s2=document.createElement('script'); s2.src='https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js'; s2.onload=()=>{ if(currentUser) tryInitFirebase(); }; document.head.appendChild(s2); };
@@ -459,6 +510,82 @@ function switchTab(t) {
         document.getElementById(id+'Section').style.display = t===id?'block':'none';
         document.getElementById('tab-'+id).classList.toggle('active', t===id);
     });
+}
+
+// ══════════════════════════════════════════════════════
+//  WORD MODE TOGGLE
+// ══════════════════════════════════════════════════════
+function setWordMode(mode) {
+    document.getElementById('wordSearchPane').style.display = mode === 'search' ? 'block' : 'none';
+    document.getElementById('wordQuickPane').style.display  = mode === 'quick'  ? 'block' : 'none';
+    document.getElementById('word-mode-search').classList.toggle('active', mode === 'search');
+    document.getElementById('word-mode-quick').classList.toggle('active',  mode === 'quick');
+}
+
+// ══════════════════════════════════════════════════════
+//  WORD QUICK PASTE
+// ══════════════════════════════════════════════════════
+let _wordParsed = [];
+
+function parseWordLine(line) {
+    // Format 1: "1. award (n) – a prize..."  or  "1) award (n) - a prize..."
+    // Handles – (en-dash), — (em-dash), - (hyphen)
+    const m1 = line.match(/^\d+[\.\)]\s+(\S+)\s+\([^)]*\)\s*[–—\-]+\s*(.+)$/);
+    if (m1) return { word: m1[1].toLowerCase(), meaning: m1[2].trim(), korean: '', phonetic: '' };
+
+    // Format 2: "award | meaning | korean (optional)"
+    const parts = line.split('|').map(s => s.trim());
+    if (parts.length >= 2 && parts[0]) {
+        return { word: parts[0].toLowerCase(), meaning: parts[1] || '', korean: parts[2] || '', phonetic: '' };
+    }
+
+    return null;
+}
+
+function parseWordQuick(val) {
+    const preview = document.getElementById('wordQuickPreview');
+    const saveBtn = document.getElementById('wordQuickSaveBtn');
+
+    const lines = val.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    _wordParsed = lines.map(parseWordLine).filter(Boolean);
+
+    if (!_wordParsed.length) {
+        preview.innerHTML = '';
+        saveBtn.disabled = true;
+        saveBtn.style.opacity = '0.5';
+        return;
+    }
+
+    preview.innerHTML = _wordParsed.map(w => `
+        <div class="word-preview-item">
+            <div>
+                <div class="wp-word">${w.word}</div>
+                ${w.korean ? `<div class="wp-korean">🇰🇷 ${w.korean}</div>` : ''}
+            </div>
+            <div class="wp-meaning">${w.meaning}</div>
+        </div>
+    `).join('');
+
+    saveBtn.textContent = `💾 Save All (${_wordParsed.length})`;
+    saveBtn.disabled = false;
+    saveBtn.style.opacity = '1';
+}
+
+function saveWordQuick() {
+    if (!_wordParsed.length) return;
+    _wordParsed.forEach(w => dbPush('words', { ...w, timestamp: Date.now() }));
+    flashBtn(document.getElementById('wordQuickSaveBtn'), `✅ ${_wordParsed.length} Saved!`);
+    clearWordQuick();
+}
+
+function clearWordQuick() {
+    document.getElementById('wordQuickInput').value = '';
+    document.getElementById('wordQuickPreview').innerHTML = '';
+    const btn = document.getElementById('wordQuickSaveBtn');
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.textContent = '💾 Save All';
+    _wordParsed = [];
 }
 
 // ══════════════════════════════════════════════════════
@@ -556,7 +683,7 @@ function savePatternManual() {
 }
 
 // ══════════════════════════════════════════════════════
-//  WORD SECTION
+//  WORD SECTION (Search/Add)
 // ══════════════════════════════════════════════════════
 function realTimeFilter(val) {
     const area=document.getElementById('filterResults');
